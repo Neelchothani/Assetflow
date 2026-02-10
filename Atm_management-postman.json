@@ -1,0 +1,2345 @@
+{
+  "info": {
+    "name": "ATM Management System - Complete API",
+    "description": "Complete Postman collection for ATM Management System with all endpoints based on actual database schema",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{auth_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080/api",
+      "type": "string"
+    },
+    {
+      "key": "auth_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "atm_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "vendor_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "movement_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "costing_id",
+      "value": "1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('auth_token', jsonData.token);",
+                  "    pm.collectionVariables.set('user_id', jsonData.user.id);",
+                  "    console.log('✅ Registration successful! Token saved.');",
+                  "    console.log('User ID:', jsonData.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"password123\",\n  \"company\": \"Tech Solutions Inc\",\n  \"phone\": \"+1234567890\",\n  \"role\": \"ADMIN\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Register a new user. Roles: ADMIN, MANAGER, VENDOR"
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('auth_token', jsonData.token);",
+                  "    pm.collectionVariables.set('user_id', jsonData.user.id);",
+                  "    console.log('✅ Login successful! Token saved.');",
+                  "    console.log('Token:', jsonData.token.substring(0, 20) + '...');",
+                  "    console.log('User:', jsonData.user.name);",
+                  "    console.log('Role:', jsonData.user.role);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@assetflow.com\",\n  \"password\": \"admin123\",\n  \"role\": \"ADMIN\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Login with email, password, and role. Token is automatically saved."
+          }
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "me"]
+            },
+            "description": "Get details of currently logged in user"
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('auth_token', jsonData.token);",
+                  "    console.log('✅ Token refreshed successfully!');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "refresh"]
+            }
+          }
+        },
+        {
+          "name": "Verify Token",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/verify",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "verify"]
+            }
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"admin123\",\n  \"newPassword\": \"newpassword456\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/change-password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "change-password"]
+            }
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/forgot-password?email=john@example.com",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "forgot-password"],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "john@example.com"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"reset-token-here\",\n  \"newPassword\": \"newpassword456\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/reset-password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "reset-password"]
+            }
+          }
+        },
+        {
+          "name": "Check Email Availability",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/check-email?email=test@example.com",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "check-email"],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "test@example.com"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏧 ATMs",
+      "item": [
+        {
+          "name": "Get All ATMs",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/atms",
+              "host": ["{{base_url}}"],
+              "path": ["atms"]
+            },
+            "description": "Retrieve all ATMs from the database"
+          }
+        },
+        {
+          "name": "Get ATM by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    console.log('ATM Details:');",
+                  "    console.log('ID:', jsonData.id);",
+                  "    console.log('Name:', jsonData.name);",
+                  "    console.log('Serial Number:', jsonData.serialNumber);",
+                  "    console.log('Status:', jsonData.status);",
+                  "    console.log('Location:', jsonData.location);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/atms/{{atm_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["atms", "{{atm_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Get ATMs by Status",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/atms/status/ACTIVE",
+              "host": ["{{base_url}}"],
+              "path": ["atms", "status", "ACTIVE"]
+            },
+            "description": "Status options: ACTIVE, IDLE, MAINTENANCE, DECOMMISSIONED"
+          }
+        },
+        {
+          "name": "Search ATMs",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/atms/search?keyword=downtown",
+              "host": ["{{base_url}}"],
+              "path": ["atms", "search"],
+              "query": [
+                {
+                  "key": "keyword",
+                  "value": "downtown"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create ATM",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('atm_id', jsonData.id);",
+                  "    console.log('✅ ATM created successfully!');",
+                  "    console.log('ATM ID:', jsonData.id);",
+                  "    console.log('Serial Number:', jsonData.serialNumber);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"ATM Downtown Branch\",\n  \"serialNumber\": \"ATM-2024-001\",\n  \"status\": \"ACTIVE\",\n  \"location\": \"123 Main Street, Downtown\",\n  \"branch\": \"Downtown Branch\",\n  \"vendorId\": 1,\n  \"value\": 50000.00,\n  \"purchaseDate\": \"2024-01-15\",\n  \"installationDate\": \"2024-02-01\",\n  \"lastMaintenanceDate\": \"2024-12-01\",\n  \"nextMaintenanceDate\": \"2025-03-01\",\n  \"manufacturer\": \"NCR Corporation\",\n  \"model\": \"NCR SelfServ 80\",\n  \"cashCapacity\": 100000.00,\n  \"currentCashBalance\": 75000.00,\n  \"transactionCount\": 0,\n  \"notes\": \"Newly installed ATM in high-traffic area\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/atms",
+              "host": ["{{base_url}}"],
+              "path": ["atms"]
+            }
+          }
+        },
+        {
+          "name": "Update ATM",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"ATM Downtown Branch - Updated\",\n  \"serialNumber\": \"ATM-2024-001\",\n  \"status\": \"ACTIVE\",\n  \"location\": \"123 Main Street, Downtown - Updated Location\",\n  \"branch\": \"Downtown Branch\",\n  \"vendorId\": 1,\n  \"value\": 55000.00,\n  \"manufacturer\": \"NCR Corporation\",\n  \"model\": \"NCR SelfServ 80\",\n  \"cashCapacity\": 100000.00,\n  \"currentCashBalance\": 80000.00,\n  \"notes\": \"Updated ATM information\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/atms/{{atm_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["atms", "{{atm_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Update ATM Status",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/atms/{{atm_id}}/status?status=MAINTENANCE",
+              "host": ["{{base_url}}"],
+              "path": ["atms", "{{atm_id}}", "status"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "MAINTENANCE",
+                  "description": "ACTIVE, IDLE, MAINTENANCE, DECOMMISSIONED"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete ATM",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/atms/{{atm_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["atms", "{{atm_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏢 Vendors",
+      "item": [
+        {
+          "name": "Get All Vendors",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/vendors",
+              "host": ["{{base_url}}"],
+              "path": ["vendors"]
+            }
+          }
+        },
+        {
+          "name": "Get Vendor by ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/vendors/{{vendor_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["vendors", "{{vendor_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Vendors by Status",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/vendors/status/ACTIVE",
+              "host": ["{{base_url}}"],
+              "path": ["vendors", "status", "ACTIVE"]
+            },
+            "description": "Status options: ACTIVE, INACTIVE, SUSPENDED"
+          }
+        },
+        {
+          "name": "Search Vendors",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/vendors/search?keyword=tech",
+              "host": ["{{base_url}}"],
+              "path": ["vendors", "search"],
+              "query": [
+                {
+                  "key": "keyword",
+                  "value": "tech"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Vendor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('vendor_id', jsonData.id);",
+                  "    console.log('✅ Vendor created successfully!');",
+                  "    console.log('Vendor ID:', jsonData.id);",
+                  "    console.log('Name:', jsonData.name);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"TechVendor Solutions\",\n  \"email\": \"contact@techvendor.com\",\n  \"phone\": \"+1-555-0100\",\n  \"status\": \"ACTIVE\",\n  \"address\": \"456 Vendor Street, Suite 100, Business District, NY 10001\",\n  \"contactPerson\": \"Michael Chen\",\n  \"taxId\": \"TAX-123456789\",\n  \"assetsAllocated\": 0,\n  \"activeSites\": 0,\n  \"totalCost\": 0.00,\n  \"rating\": 0.00,\n  \"joinedDate\": \"2024-01-01\",\n  \"contractStartDate\": \"2024-01-01\",\n  \"contractEndDate\": \"2025-12-31\",\n  \"notes\": \"New vendor specializing in ATM maintenance and support\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/vendors",
+              "host": ["{{base_url}}"],
+              "path": ["vendors"]
+            }
+          }
+        },
+        {
+          "name": "Update Vendor",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"TechVendor Solutions - Premium\",\n  \"email\": \"premium@techvendor.com\",\n  \"phone\": \"+1-555-0100\",\n  \"status\": \"ACTIVE\",\n  \"address\": \"456 Vendor Street, Suite 200, Business District, NY 10001\",\n  \"contactPerson\": \"Michael Chen\",\n  \"taxId\": \"TAX-123456789\",\n  \"notes\": \"Premium vendor with excellent track record\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/vendors/{{vendor_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["vendors", "{{vendor_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Vendor Status",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/vendors/{{vendor_id}}/status?status=ACTIVE",
+              "host": ["{{base_url}}"],
+              "path": ["vendors", "{{vendor_id}}", "status"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "ACTIVE",
+                  "description": "ACTIVE, INACTIVE, SUSPENDED"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Vendor Rating",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/vendors/{{vendor_id}}/rating?rating=4.5",
+              "host": ["{{base_url}}"],
+              "path": ["vendors", "{{vendor_id}}", "rating"],
+              "query": [
+                {
+                  "key": "rating",
+                  "value": "4.5",
+                  "description": "Rating between 0.00 and 5.00"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Vendor",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/vendors/{{vendor_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["vendors", "{{vendor_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Vendor Statistics",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/vendors/stats",
+              "host": ["{{base_url}}"],
+              "path": ["vendors", "stats"]
+            }
+          }
+        },
+        {
+          "name": "Get Vendor ATMs",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/vendors/{{vendor_id}}/atms",
+              "host": ["{{base_url}}"],
+              "path": ["vendors", "{{vendor_id}}", "atms"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🚚 Movements",
+      "item": [
+        {
+          "name": "Get All Movements",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/movements",
+              "host": ["{{base_url}}"],
+              "path": ["movements"]
+            }
+          }
+        },
+        {
+          "name": "Get Movement by ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/movements/{{movement_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["movements", "{{movement_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Movements by Status",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/movements/status/PENDING",
+              "host": ["{{base_url}}"],
+              "path": ["movements", "status", "PENDING"]
+            },
+            "description": "Status options: PENDING, IN_TRANSIT, DELIVERED, CANCELLED"
+          }
+        },
+        {
+          "name": "Get Movements by Type",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/movements/type/INSTALLATION",
+              "host": ["{{base_url}}"],
+              "path": ["movements", "type", "INSTALLATION"]
+            },
+            "description": "Type options: INSTALLATION, RELOCATION, MAINTENANCE, DECOMMISSION, RETURN"
+          }
+        },
+        {
+          "name": "Get Movements by ATM",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/movements/atm/{{atm_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["movements", "atm", "{{atm_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Recent Movements",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/movements/recent?limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["movements", "recent"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Movement",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('movement_id', jsonData.id);",
+                  "    console.log('✅ Movement created successfully!');",
+                  "    console.log('Movement ID:', jsonData.id);",
+                  "    console.log('Tracking Number:', jsonData.trackingNumber);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"atmId\": 1,\n  \"fromLocation\": \"Central Warehouse, 789 Storage Blvd\",\n  \"toLocation\": \"Downtown Branch, 123 Main Street\",\n  \"movementType\": \"INSTALLATION\",\n  \"status\": \"PENDING\",\n  \"initiatedBy\": \"John Manager\",\n  \"initiatedDate\": \"2024-01-15\",\n  \"expectedDelivery\": \"2024-01-20\",\n  \"notes\": \"Fragile equipment - Handle with care. Requires forklift at destination.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/movements",
+              "host": ["{{base_url}}"],
+              "path": ["movements"]
+            }
+          }
+        },
+        {
+          "name": "Update Movement",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"atmId\": 1,\n  \"fromLocation\": \"Central Warehouse, 789 Storage Blvd\",\n  \"toLocation\": \"Downtown Branch, 123 Main Street - Updated\",\n  \"movementType\": \"INSTALLATION\",\n  \"status\": \"IN_TRANSIT\",\n  \"initiatedBy\": \"John Manager\",\n  \"initiatedDate\": \"2024-01-15\",\n  \"expectedDelivery\": \"2024-01-22\",\n  \"notes\": \"Delivery delayed due to weather conditions\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/movements/{{movement_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["movements", "{{movement_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Movement Status",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/movements/{{movement_id}}/status?status=IN_TRANSIT",
+              "host": ["{{base_url}}"],
+              "path": ["movements", "{{movement_id}}", "status"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "IN_TRANSIT",
+                  "description": "PENDING, IN_TRANSIT, DELIVERED, CANCELLED"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Mark as Delivered",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/movements/{{movement_id}}/deliver",
+              "host": ["{{base_url}}"],
+              "path": ["movements", "{{movement_id}}", "deliver"]
+            }
+          }
+        },
+        {
+          "name": "Delete Movement",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/movements/{{movement_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["movements", "{{movement_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Movement Statistics",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/movements/stats",
+              "host": ["{{base_url}}"],
+              "path": ["movements", "stats"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💰 Costings",
+      "item": [
+        {
+          "name": "Get All Costings",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/costings",
+              "host": ["{{base_url}}"],
+              "path": ["costings"]
+            }
+          }
+        },
+        {
+          "name": "Get Costing by ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/costings/{{costing_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["costings", "{{costing_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Costings by Status",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/costings/status/PENDING",
+              "host": ["{{base_url}}"],
+              "path": ["costings", "status", "PENDING"]
+            },
+            "description": "Status options: PENDING, APPROVED, REJECTED"
+          }
+        },
+        {
+          "name": "Get Pending Costings",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/costings/pending",
+              "host": ["{{base_url}}"],
+              "path": ["costings", "pending"]
+            }
+          }
+        },
+        {
+          "name": "Get Costings by ATM",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/costings/atm/{{atm_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["costings", "atm", "{{atm_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Costings by Vendor",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/costings/vendor/{{vendor_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["costings", "vendor", "{{vendor_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Create Costing",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('costing_id', jsonData.id);",
+                  "    console.log('✅ Costing created successfully!');",
+                  "    console.log('Costing ID:', jsonData.id);",
+                  "    console.log('Total Cost:', jsonData.totalCost);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"atmId\": 1,\n  \"vendorId\": 1,\n  \"baseCost\": 10000.00,\n  \"maintenanceCost\": 2000.00,\n  \"operationalCost\": 1500.00,\n  \"margin\": 15.00,\n  \"status\": \"PENDING\",\n  \"submittedBy\": \"John Manager\",\n  \"submittedDate\": \"2024-01-15\",\n  \"notes\": \"Q1 2024 maintenance and operational costs\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/costings",
+              "host": ["{{base_url}}"],
+              "path": ["costings"]
+            },
+            "description": "Total cost is automatically calculated: (baseCost + maintenanceCost + operationalCost) + margin%"
+          }
+        },
+        {
+          "name": "Update Costing",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"atmId\": 1,\n  \"vendorId\": 1,\n  \"baseCost\": 10500.00,\n  \"maintenanceCost\": 2200.00,\n  \"operationalCost\": 1600.00,\n  \"margin\": 15.00,\n  \"status\": \"PENDING\",\n  \"submittedBy\": \"John Manager\",\n  \"submittedDate\": \"2024-01-15\",\n  \"notes\": \"Updated Q1 2024 costs - price adjustments\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/costings/{{costing_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["costings", "{{costing_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Approve Costing",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/costings/{{costing_id}}/approve?approvedBy=Admin User",
+              "host": ["{{base_url}}"],
+              "path": ["costings", "{{costing_id}}", "approve"],
+              "query": [
+                {
+                  "key": "approvedBy",
+                  "value": "Admin User"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reject Costing",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/costings/{{costing_id}}/reject?rejectedBy=Admin User",
+              "host": ["{{base_url}}"],
+              "path": ["costings", "{{costing_id}}", "reject"],
+              "query": [
+                {
+                  "key": "rejectedBy",
+                  "value": "Admin User"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Costing",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/costings/{{costing_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["costings", "{{costing_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Costing Statistics",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/costings/stats",
+              "host": ["{{base_url}}"],
+              "path": ["costings", "stats"]
+            }
+          }
+        },
+        {
+          "name": "Get Costing Summary",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/costings/summary",
+              "host": ["{{base_url}}"],
+              "path": ["costings", "summary"]
+            },
+            "description": "Returns pending, approved, rejected costings and statistics"
+          }
+        }
+      ]
+    },
+    {
+      "name": "📊 Dashboard",
+      "item": [
+        {
+          "name": "Get Complete Dashboard",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/dashboard",
+              "host": ["{{base_url}}"],
+              "path": ["dashboard"]
+            },
+            "description": "Returns complete dashboard with KPIs, charts, recent movements, and alerts"
+          }
+        },
+        {
+          "name": "Get KPIs",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/dashboard/kpis",
+              "host": ["{{base_url}}"],
+              "path": ["dashboard", "kpis"]
+            }
+          }
+        },
+        {
+          "name": "Get Asset Turnover Chart",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/dashboard/charts/turnover",
+              "host": ["{{base_url}}"],
+              "path": ["dashboard", "charts", "turnover"]
+            }
+          }
+        },
+        {
+          "name": "Get Asset Distribution Chart",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/dashboard/charts/distribution",
+              "host": ["{{base_url}}"],
+              "path": ["dashboard", "charts", "distribution"]
+            }
+          }
+        },
+        {
+          "name": "Get Vendor Allocation Chart",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/dashboard/charts/vendor-allocation",
+              "host": ["{{base_url}}"],
+              "path": ["dashboard", "charts", "vendor-allocation"]
+            }
+          }
+        },
+        {
+          "name": "Get Risk Trend Chart",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/dashboard/charts/risk-trend",
+              "host": ["{{base_url}}"],
+              "path": ["dashboard", "charts", "risk-trend"]
+            }
+          }
+        },
+        {
+          "name": "Get Recent Movements",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/dashboard/recent-movements?limit=5",
+              "host": ["{{base_url}}"],
+              "path": ["dashboard", "recent-movements"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get System Alerts",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/dashboard/alerts",
+              "host": ["{{base_url}}"],
+              "path": ["dashboard", "alerts"]
+            }
+          }
+        },
+        {
+          "name": "Get ATM Status Summary",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/dashboard/atm-status",
+              "host": ["{{base_url}}"],
+              "path": ["dashboard", "atm-status"]
+            }
+          }
+        },
+        {
+          "name": "Get Location Distribution",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/dashboard/location-distribution",
+              "host": ["{{base_url}}"],
+              "path": ["dashboard", "location-distribution"]
+            }
+          }
+        },
+        {
+          "name": "Get Monthly Statistics",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/dashboard/monthly-stats?year=2024&month=1",
+              "host": ["{{base_url}}"],
+              "path": ["dashboard", "monthly-stats"],
+              "query": [
+                {
+                  "key": "year",
+                  "value": "2024"
+                },
+                {
+                  "key": "month",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Performance Metrics",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/dashboard/performance",
+              "host": ["{{base_url}}"],
+              "path": ["dashboard", "performance"]
+            }
+          }
+        },
+        {
+          "name": "Refresh Dashboard",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/dashboard/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["dashboard", "refresh"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📧 Mailing",
+      "item": [
+        {
+          "name": "Upload Email Excel File",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/mailing/upload",
+              "host": ["{{base_url}}"],
+              "path": ["mailing", "upload"]
+            },
+            "description": "Upload Excel file with email data. Max size: 10MB. Formats: .xlsx, .xls"
+          }
+        },
+        {
+          "name": "Send Bulk Emails",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipients\": [\n    {\n      \"email\": \"user1@example.com\",\n      \"name\": \"User One\"\n    },\n    {\n      \"email\": \"user2@example.com\",\n      \"name\": \"User Two\"\n    },\n    {\n      \"email\": \"user3@example.com\",\n      \"name\": \"User Three\"\n    }\n  ],\n  \"subject\": \"Monthly ATM Report - January 2024\",\n  \"body\": \"Dear {name},\\n\\nHere is your monthly ATM management report for January 2024.\\n\\nBest regards,\\nATM Management Team\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mailing/send",
+              "host": ["{{base_url}}"],
+              "path": ["mailing", "send"]
+            },
+            "description": "Send emails to multiple recipients. Use {name} as placeholder in body."
+          }
+        },
+        {
+          "name": "Send Single Email",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/mailing/send-single?to=user@example.com&subject=Test Email&body=This is a test email&name=John Doe",
+              "host": ["{{base_url}}"],
+              "path": ["mailing", "send-single"],
+              "query": [
+                {
+                  "key": "to",
+                  "value": "user@example.com"
+                },
+                {
+                  "key": "subject",
+                  "value": "Test Email"
+                },
+                {
+                  "key": "body",
+                  "value": "This is a test email"
+                },
+                {
+                  "key": "name",
+                  "value": "John Doe"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Validate Email Addresses",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  \"valid@example.com\",\n  \"invalid-email\",\n  \"another.valid@test.com\",\n  \"bad@\",\n  \"good@domain.co.uk\"\n]"
+            },
+            "url": {
+              "raw": "{{base_url}}/mailing/validate",
+              "host": ["{{base_url}}"],
+              "path": ["mailing", "validate"]
+            }
+          }
+        },
+        {
+          "name": "Get Email Templates",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/mailing/templates",
+              "host": ["{{base_url}}"],
+              "path": ["mailing", "templates"]
+            }
+          }
+        },
+        {
+          "name": "Send Movement Notification",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/mailing/notify/movement?movementId={{movement_id}}&recipientEmail=manager@example.com&movementType=INSTALLATION",
+              "host": ["{{base_url}}"],
+              "path": ["mailing", "notify", "movement"],
+              "query": [
+                {
+                  "key": "movementId",
+                  "value": "{{movement_id}}"
+                },
+                {
+                  "key": "recipientEmail",
+                  "value": "manager@example.com"
+                },
+                {
+                  "key": "movementType",
+                  "value": "INSTALLATION"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Send Costing Notification",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/mailing/notify/costing?costingId={{costing_id}}&recipientEmail=admin@example.com&costingType=approval&amount=15000.00",
+              "host": ["{{base_url}}"],
+              "path": ["mailing", "notify", "costing"],
+              "query": [
+                {
+                  "key": "costingId",
+                  "value": "{{costing_id}}"
+                },
+                {
+                  "key": "recipientEmail",
+                  "value": "admin@example.com"
+                },
+                {
+                  "key": "costingType",
+                  "value": "approval"
+                },
+                {
+                  "key": "amount",
+                  "value": "15000.00"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Send Maintenance Reminder",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/mailing/notify/maintenance?atmId={{atm_id}}&recipientEmail=tech@example.com&nextMaintenanceDate=2024-03-01",
+              "host": ["{{base_url}}"],
+              "path": ["mailing", "notify", "maintenance"],
+              "query": [
+                {
+                  "key": "atmId",
+                  "value": "{{atm_id}}"
+                },
+                {
+                  "key": "recipientEmail",
+                  "value": "tech@example.com"
+                },
+                {
+                  "key": "nextMaintenanceDate",
+                  "value": "2024-03-01"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Email History",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/mailing/history?page=0&size=20",
+              "host": ["{{base_url}}"],
+              "path": ["mailing", "history"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Email Statistics",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/mailing/stats",
+              "host": ["{{base_url}}"],
+              "path": ["mailing", "stats"]
+            }
+          }
+        },
+        {
+          "name": "Download Email Template",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/mailing/template/download?templateName=default",
+              "host": ["{{base_url}}"],
+              "path": ["mailing", "template", "download"],
+              "query": [
+                {
+                  "key": "templateName",
+                  "value": "default"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Test Email Configuration",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/mailing/test?testEmail=test@example.com",
+              "host": ["{{base_url}}"],
+              "path": ["mailing", "test"],
+              "query": [
+                {
+                  "key": "testEmail",
+                  "value": "test@example.com"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🧪 Test & Debug (Remove in Production)",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/test/health",
+              "host": ["{{base_url}}"],
+              "path": ["test", "health"]
+            },
+            "description": "Check if the API is running"
+          }
+        },
+        {
+          "name": "Database Connection Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/test/db-check",
+              "host": ["{{base_url}}"],
+              "path": ["test", "db-check"]
+            },
+            "description": "Verify database connectivity"
+          }
+        },
+        {
+          "name": "List All Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/test/users",
+              "host": ["{{base_url}}"],
+              "path": ["test", "users"]
+            },
+            "description": "List all users in the database (for debugging)"
+          }
+        },
+        {
+          "name": "Create Test User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    console.log('✅ Test user created!');",
+                  "    console.log('Email: admin@assetflow.com');",
+                  "    console.log('Password: admin123');",
+                  "    console.log('Role: ADMIN');",
+                  "    console.log('');",
+                  "    console.log('Now you can use the Login endpoint to get a token!');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/test/create-test-user",
+              "host": ["{{base_url}}"],
+              "path": ["test", "create-test-user"]
+            },
+            "description": "Creates a test admin user: admin@assetflow.com / admin123"
+          }
+        },
+        {
+          "name": "Encode Password",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/test/encode-password?password=mypassword",
+              "host": ["{{base_url}}"],
+              "path": ["test", "encode-password"],
+              "query": [
+                {
+                  "key": "password",
+                  "value": "mypassword"
+                }
+              ]
+            },
+            "description": "Encode a password using BCrypt"
+          }
+        },
+        {
+          "name": "Verify Password",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/test/verify-password?email=admin@assetflow.com&password=admin123",
+              "host": ["{{base_url}}"],
+              "path": ["test", "verify-password"],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "admin@assetflow.com"
+                },
+                {
+                  "key": "password",
+                  "value": "admin123"
+                }
+              ]
+            },
+            "description": "Test if a password matches the stored hash for a user"
+          }
+        },
+        {
+          "name": "Check User Exists",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/test/check-user?email=admin@assetflow.com",
+              "host": ["{{base_url}}"],
+              "path": ["test", "check-user"],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "admin@assetflow.com"
+                }
+              ]
+            },
+            "description": "Check if a user exists by email"
+          }
+        }
+      ]
+    }
+  ]
+}
