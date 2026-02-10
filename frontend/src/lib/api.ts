@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create axios instance with base configuration
 // Dynamically use the current hostname/IP so it works on any machine
-const baseURL = `http://${window.location.hostname}:8080/api`;
+const baseURL = `http://${window.location.hostname}:8081/api`;
 const api = axios.create({
   baseURL: baseURL,
   headers: {

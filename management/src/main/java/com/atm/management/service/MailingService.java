@@ -451,7 +451,7 @@ public class MailingService {
             We received a request to reset your password for your AssetFlow account.
             
             Click the link below to reset your password:
-            http://localhost:5173/reset-password?token=%s
+            http://localhost:5174/reset-password?token=%s
             
             This link will expire in 1 hour.
             

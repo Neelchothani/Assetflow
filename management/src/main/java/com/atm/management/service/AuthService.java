@@ -196,7 +196,7 @@ public class AuthService {
         // TODO: Send email with reset link
         // For now, we'll just log it (in production, use JavaMailSender)
         log.info("Password Reset Token for {}: {}", email, resetToken);
-        log.info("Reset link: http://localhost:5173/reset-password?token={}", resetToken);
+        log.info("Reset link: http://localhost:5174/reset-password?token={}", resetToken);
 
         // In production, you would send an email like this:
         // emailService.sendPasswordResetEmail(user.getEmail(), user.getName(), resetToken);
