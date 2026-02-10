@@ -11,6 +11,7 @@ export interface RegisterRequest {
   password: string;
   company: string;
   phone?: string;
+  role?: 'admin' | 'manager';
 }
 
 export interface AuthResponse {

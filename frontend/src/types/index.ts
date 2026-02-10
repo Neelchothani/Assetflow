@@ -63,12 +63,30 @@ export interface Movement {
 
 export type AssetMovement = Movement;
 
+export type StatusType = 
+  | 'pending' 
+  | 'in-transit' 
+  | 'delivered' 
+  | 'active' 
+  | 'inactive' 
+  | 'idle' 
+  | 'maintenance'
+  | 'approved'
+  | 'rejected'
+  | 'retired';
+
 export interface Vendor {
   id: number;
   name: string;
   email?: string;
   phone?: string;
-  status: string;
+  address?: string;
+  notes?: string;
+  contactPerson?: string;
+  taxId?: string;
+  contractStartDate?: string;
+  contractEndDate?: string;
+  status: StatusType;
   assetsAllocated?: number;
   activeSites?: number;
   totalCost?: number;
@@ -89,7 +107,7 @@ export interface CostingItem {
     name: string;
   };
   billingStatus?: string;
-  baseCost?: number; // total_amount (column N)
+  baseCost?: number; // true final cost (column N - Total Cost)
   hold?: number; // hold (column O)
   deduction?: number; // deduction (column P)
   finalAmount?: number; // final_amount (column Q)

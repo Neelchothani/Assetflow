@@ -18,7 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2, Send, X, RefreshCw, Users, Trash2, Download } from 'lucide-react';
+import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2, Send, X, RefreshCw, Users, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { mailingService, VendorDataResponse, VendorInfo, UploadedFileResponse } from '@/services/mailingService';
 
@@ -45,28 +45,6 @@ export default function Mailing() {
       console.error('Error loading uploaded files:', error);
     } finally {
       setIsLoadingFiles(false);
-    }
-  };
-
-  const deleteUploadedFile = async (fileId: number) => {
-    if (!confirm('Are you sure you want to delete this file? This will also delete all associated data.')) {
-      return;
-    }
-
-    try {
-      const response = await mailingService.deleteUploadedFile(fileId);
-      setUploadedFiles(prev => prev.filter(f => f.id !== fileId));
-      
-      // Show success message with deletion summary
-      toast.success(
-        `File deleted successfully!\n${response.assetsDeleted} assets, ${response.movementsDeleted} movements, and ${response.vendorsDeleted} vendors removed.`,
-        {
-          duration: 5000,
-        }
-      );
-    } catch (error) {
-      console.error('Error deleting file:', error);
-      toast.error('Failed to delete file. Please try again.');
     }
   };
 
@@ -233,7 +211,6 @@ export default function Mailing() {
                     <TableHead className="table-header">Rows</TableHead>
                     <TableHead className="table-header">Vendors</TableHead>
                     <TableHead className="table-header">Uploaded</TableHead>
-                    <TableHead className="table-header">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -244,16 +221,6 @@ export default function Mailing() {
                       <TableCell>{uploadedFile.totalRows}</TableCell>
                       <TableCell>{uploadedFile.vendorsCreated}</TableCell>
                       <TableCell>{new Date(uploadedFile.createdAt).toLocaleDateString()}</TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteUploadedFile(uploadedFile.id)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

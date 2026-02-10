@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { PageHeader } from '@/components/common/PageHeader';
 import { DataTable, Column } from '@/components/common/DataTable';
 import { StatusBadge } from '@/components/common/StatusBadge';
@@ -21,8 +21,10 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { vendorService } from '@/services/vendorService';
+import { costingService } from '@/services/costingService';
 import { Vendor } from '@/types';
 import { Plus, Star, Building2, Package, MapPin, DollarSign, Download } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import * as XLSX from 'xlsx';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -30,6 +32,8 @@ import { Textarea } from '@/components/ui/textarea';
 export default function Vendors() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [costingsLoading, setCostingsLoading] = useState(true);
+  const [costings, setCostings] = useState<any[]>([]);
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
   const [editRating, setEditRating] = useState<number>(0);
   const [editStatus, setEditStatus] = useState<string>('active');
@@ -40,6 +44,10 @@ export default function Vendors() {
     phone: '',
     address: '',
     notes: '',
+    contactPerson: '',
+    taxId: '',
+    contractStartDate: '',
+    contractEndDate: '',
   });
   const [formError, setFormError] = useState<string | null>(null);
   useHighlight();
@@ -67,6 +75,22 @@ export default function Vendors() {
   }, []);
 
   useEffect(() => {
+    const fetchCostings = async () => {
+      try {
+        setCostingsLoading(true);
+        const costingsData = await costingService.getAllCostings();
+        setCostings(costingsData || []);
+      } catch (error) {
+        console.error('Failed to fetch costings:', error);
+        setCostings([]);
+      } finally {
+        setCostingsLoading(false);
+      }
+    };
+    fetchCostings();
+  }, []);
+
+  useEffect(() => {
     if (selectedVendor) {
       setEditRating(selectedVendor.rating || 0);
       setEditStatus(selectedVendor.status || 'active');
@@ -80,6 +104,10 @@ export default function Vendors() {
       phone: '',
       address: '',
       notes: '',
+      contactPerson: '',
+      taxId: '',
+      contractStartDate: '',
+      contractEndDate: '',
     });
     setFormError(null);
     setOpenAddVendor(true);
@@ -179,6 +207,23 @@ export default function Vendors() {
     vendors.length > 0
       ? (vendors.reduce((sum, v) => sum + v.rating, 0) / vendors.length).toFixed(1)
       : 0;
+
+  const inFormatter = new Intl.NumberFormat('en-IN');
+
+  const vendorSeries = useMemo(() => {
+    const map = new Map<string, number>();
+    costings.forEach((it) => {
+      const name = it.vendor?.name || it.atm?.name || 'Unknown';
+      map.set(name, (map.get(name) || 0) + (Number(it.baseCost) || 0));
+    });
+    return Array.from(map.entries()).map(([vendor, baseCost]) => ({ vendor, baseCost }));
+  }, [costings]);
+
+  const costingTotals = useMemo(() => {
+    const totalBase = costings.reduce((s, it) => s + (Number(it.baseCost) || 0), 0);
+    const totalVendor = costings.reduce((s, it) => s + (Number(it.vendorCost) || 0), 0);
+    return { totalBase, totalVendor };
+  }, [costings]);
 
   const handleExportVendors = () => {
     try {
@@ -285,11 +330,91 @@ export default function Vendors() {
         </Card>
       </div>
 
+      {/* Vendor-wise Base Costings Chart and Summary */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card className="lg:col-span-2 h-[360px]">
+          <CardHeader>
+            <CardTitle>Vendor-wise Base Costings</CardTitle>
+            <CardDescription>Aggregated base costs per vendor</CardDescription>
+          </CardHeader>
+          <CardContent className="h-[300px]">
+            {costingsLoading ? (
+              <Skeleton className="h-full" />
+            ) : vendorSeries.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No costing data available</p>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={vendorSeries} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="vendor"
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis 
+                    tickFormatter={(v) => `₹${inFormatter.format(Number(v))}`}
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip 
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div className="bg-card p-3 border border-border rounded shadow-lg">
+                            <p className="text-sm font-medium text-foreground">{data.vendor}</p>
+                            <p className="text-sm text-[#0ea5e9]">₹{inFormatter.format(Number(data.baseCost))}</p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Line type="monotone" dataKey="baseCost" stroke="#0ea5e9" strokeWidth={2} dot={{ r: 3 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick Summary</CardTitle>
+              <CardDescription>Vendor-wise costings breakdown</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {costingsLoading ? (
+                <Skeleton className="h-48" />
+              ) : vendorSeries.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No costing data available</p>
+              ) : (
+                <div className="space-y-2">
+                  <div className="max-h-64 overflow-y-auto space-y-2">
+                    {vendorSeries.map((item, idx) => (
+                      <div key={idx} className="flex items-center justify-between pb-2 border-b last:border-0">
+                        <div className="text-sm truncate flex-1 text-muted-foreground">{item.vendor}</div>
+                        <div className="font-semibold ml-2">₹{inFormatter.format(Number(item.baseCost))}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t font-bold text-base">
+                    <div className="text-sm">Total</div>
+                    <div>₹{inFormatter.format(costingTotals.totalBase)}</div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
       <DataTable
         data={vendors}
         columns={columns}
         isLoading={isLoading}
-        searchKey="name"
         searchPlaceholder="Search vendors..."
         onRowClick={setSelectedVendor}
       />

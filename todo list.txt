@@ -1,1 +1,3 @@
-start updating vendor page 
+admin & user accessibility
+fix signup page
+signin page login without options

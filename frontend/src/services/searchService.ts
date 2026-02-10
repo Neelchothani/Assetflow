@@ -109,7 +109,7 @@ export const searchService = {
           results.push({
             id: costing.id,
             title: costing.atm?.name || 'Unknown Asset',
-            description: `Vendor: ${costing.vendor?.name || 'N/A'} | Amount: ₹${costing.finalAmount || 0}`,
+            description: `Vendor: ${costing.vendor?.name || 'N/A'} | Amount: ₹${costing.baseCost || 0}`,
             page: 'Costings',
             type: 'costing',
             link: `/costing?highlight=${costing.id}&page=${pageNumber}`,

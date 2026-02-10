@@ -24,7 +24,19 @@ export function AppHeader({ onMenuClick, showMenuButton }: AppHeaderProps) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    authService.getCurrentUser().then((u) => setUser(u)).catch(() => setUser(null));
+    // First try to get user from localStorage
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {
+        // If localStorage data is invalid, fetch from API
+        authService.getCurrentUser().then((u) => setUser(u)).catch(() => setUser(null));
+      }
+    } else {
+      // If no user in localStorage, fetch from API
+      authService.getCurrentUser().then((u) => setUser(u)).catch(() => setUser(null));
+    }
   }, []);
 
   const handleLogout = async () => {

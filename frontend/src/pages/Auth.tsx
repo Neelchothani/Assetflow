@@ -19,6 +19,7 @@ export default function Auth() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
+  const [selectedRole, setSelectedRole] = useState<'admin' | 'manager'>('manager');
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -46,8 +47,12 @@ export default function Auth() {
       // Show success toast
       toast.success(`Welcome back, ${response.user.name}!`);
       
-      // Navigate to dashboard
-      navigate('/dashboard');
+      // Navigate based on role
+      if (response.user.role === 'admin') {
+        navigate('/dashboard');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err: any) {
       console.error('Login error:', err);
       
@@ -74,13 +79,14 @@ export default function Auth() {
     const company = formData.get('company') as string;
 
     try {
-      console.log('Attempting registration:', { name, email, company });
+      console.log('Attempting registration:', { name, email, company, role: selectedRole });
       
       const response = await authService.register({
         name,
         email,
         password,
         company,
+        role: selectedRole,
       });
 
       console.log('Registration successful:', response);
@@ -205,6 +211,32 @@ export default function Auth() {
                 </CardDescription>
 
                 <form onSubmit={handleSignup} className="space-y-4 pt-4">
+                  <div className="space-y-2">
+                    <Label>Sign Up As</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant={selectedRole === 'admin' ? 'default' : 'outline'}
+                        className="gap-2"
+                        onClick={() => setSelectedRole('admin')}
+                        disabled={isLoading}
+                      >
+                        <Shield className="w-4 h-4" />
+                        Admin
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={selectedRole === 'manager' ? 'default' : 'outline'}
+                        className="gap-2"
+                        onClick={() => setSelectedRole('manager')}
+                        disabled={isLoading}
+                      >
+                        <User className="w-4 h-4" />
+                        User
+                      </Button>
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="signup-name">Full Name</Label>
                     <div className="relative">

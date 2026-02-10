@@ -46,18 +46,9 @@ export default function Costing() {
 	const [selectedItem, setSelectedItem] = useState<CostingItem | null>(null);
 
 	const totals = useMemo(() => {
-		const totalFinal = items.reduce((s, it) => s + (Number(it.finalAmount) || 0), 0);
+		const totalBase = items.reduce((s, it) => s + (Number(it.baseCost) || 0), 0);
 		const totalVendor = items.reduce((s, it) => s + (Number(it.vendorCost) || 0), 0);
-		return { totalFinal, totalVendor };
-	}, [items]);
-
-	const vendorSeries = useMemo(() => {
-		const map = new Map<string, number>();
-		items.forEach((it) => {
-			const name = it.vendor?.name || it.atm?.name || 'Unknown';
-			map.set(name, (map.get(name) || 0) + (Number(it.finalAmount) || 0));
-		});
-		return Array.from(map.entries()).map(([vendor, finalAmount]) => ({ vendor, finalAmount }));
+		return { totalBase, totalVendor };
 	}, [items]);
 
 
@@ -70,7 +61,7 @@ export default function Costing() {
 				'Base Cost': it.baseCost != null ? Number(it.baseCost) : '-',
 				Hold: it.hold != null ? Number(it.hold) : '-',
 				Deduction: it.deduction != null ? Number(it.deduction) : '-',
-				Total: it.finalAmount != null ? Number(it.finalAmount) : '-',
+				Total: it.baseCost != null ? Number(it.baseCost) : '-',
 				'Vendor Cost': it.vendorCost != null ? Number(it.vendorCost) : '-',
 				'Billing Status': it.billingStatus || '-',
 				Description: (it as any).description || (it as any).notes || it.atm?.notes || '-',
@@ -107,17 +98,31 @@ export default function Costing() {
 				</div>
 			</div>
 
+			<Card className="md:col-span-2">
+				<CardHeader>
+					<CardTitle className="text-3xl">P&L - Margins</CardTitle>
+					<CardDescription>Base costings minus vendor costs</CardDescription>
+				</CardHeader>
+				<CardContent>
+					{loading ? (
+						<Skeleton className="h-12 w-48" />
+					) : (
+						<div className="text-4xl font-bold">₹{inFormatter.format(totals.totalBase - totals.totalVendor)}</div>
+					)}
+				</CardContent>
+			</Card>
+
 			<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 				<Card>
 					<CardHeader>
-						<CardTitle>Total Final Costings</CardTitle>
-						<CardDescription>Sum of final amounts from uploaded assets</CardDescription>
+					<CardTitle>Total Base Costings</CardTitle>
+					<CardDescription>Sum of base costs from uploaded assets</CardDescription>
 					</CardHeader>
 					<CardContent>
 						{loading ? (
 							<Skeleton className="h-8 w-40" />
 						) : (
-							<div className="text-2xl font-bold">₹{inFormatter.format(totals.totalFinal)}</div>
+							<div className="text-2xl font-bold">₹{inFormatter.format(totals.totalBase)}</div>
 						)}
 					</CardContent>
 				</Card>
@@ -135,61 +140,6 @@ export default function Costing() {
 						)}
 					</CardContent>
 				</Card>
-			</div>
-
-			<div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-				<Card className="lg:col-span-2 h-[360px]">
-					<CardHeader>
-						<CardTitle>Vendor-wise Final Costings</CardTitle>
-						<CardDescription>Aggregated final amounts per vendor</CardDescription>
-					</CardHeader>
-					<CardContent className="h-[300px]">
-						{loading ? (
-							<Skeleton className="h-full" />
-						) : (
-							<ResponsiveContainer width="100%" height="100%">
-								<LineChart data={vendorSeries} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
-									<CartesianGrid strokeDasharray="3 3" />
-									<XAxis dataKey="vendor" />
-									<YAxis tickFormatter={(v) => `₹${inFormatter.format(Number(v))}`} />
-									<Tooltip formatter={(value: number) => [`₹${inFormatter.format(Number(value))}`, 'Final']} />
-									<Line type="monotone" dataKey="finalAmount" stroke="#0ea5e9" strokeWidth={2} dot={{ r: 3 }} />
-								</LineChart>
-							</ResponsiveContainer>
-						)}
-					</CardContent>
-				</Card>
-
-				<div className="space-y-4">
-					<Card>
-						<CardHeader>
-							<CardTitle>Quick Summary</CardTitle>
-							<CardDescription>Vendor-wise costings breakdown</CardDescription>
-						</CardHeader>
-						<CardContent>
-							{loading ? (
-								<Skeleton className="h-48" />
-							) : vendorSeries.length === 0 ? (
-								<p className="text-sm text-muted-foreground">No costing data available</p>
-							) : (
-								<div className="space-y-2">
-									<div className="max-h-64 overflow-y-auto space-y-2">
-										{vendorSeries.map((item, idx) => (
-											<div key={idx} className="flex items-center justify-between pb-2 border-b last:border-0">
-												<div className="text-sm truncate flex-1 text-muted-foreground">{item.vendor}</div>
-												<div className="font-semibold ml-2">₹{inFormatter.format(Number(item.finalAmount))}</div>
-											</div>
-										))}
-									</div>
-									<div className="flex items-center justify-between pt-2 border-t font-bold text-base">
-										<div className="text-sm">Total</div>
-										<div>₹{inFormatter.format(totals.totalVendor)}</div>
-									</div>
-								</div>
-							)}
-						</CardContent>
-					</Card>
-				</div>
 			</div>
 
 			<Card>
@@ -231,7 +181,7 @@ export default function Costing() {
 											<TableCell className="text-right">₹{inFormatter.format(Number(it.baseCost) || 0)}</TableCell>
 											<TableCell className="text-right">₹{inFormatter.format(Number(it.hold) || 0)}</TableCell>
 											<TableCell className="text-right">₹{inFormatter.format(Number(it.deduction) || 0)}</TableCell>
-											<TableCell className="text-right font-bold">₹{inFormatter.format(Number(it.finalAmount) || 0)}</TableCell>
+												<TableCell className="text-right font-bold">₹{inFormatter.format(Number(it.baseCost) || 0)}</TableCell>
 											<TableCell className="text-right">₹{inFormatter.format(Number(it.vendorCost) || 0)}</TableCell>
 											<TableCell>{<StatusBadge status={it.billingStatus as any} />}</TableCell>
 										</TableRow>
@@ -286,7 +236,7 @@ export default function Costing() {
 
 							<div>
 								<p className="text-sm text-muted-foreground">Total</p>
-								<p className="text-2xl font-bold">₹{inFormatter.format(Number(selectedItem.finalAmount) || 0)}</p>
+								<p className="text-2xl font-bold">₹{inFormatter.format(Number(selectedItem.baseCost) || 0)}</p>
 							</div>
 
 							<div>

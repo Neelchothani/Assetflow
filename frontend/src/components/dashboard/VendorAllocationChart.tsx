@@ -28,11 +28,9 @@ export function VendorAllocationChart() {
   }, []);
 
   return (
-    <div className="kpi-card h-[360px] animate-slide-up" style={{ animationDelay: '0.2s' }}>
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold">Vendor-wise Asset Allocation</h3>
-      </div>
-      <ResponsiveContainer width="100%" height="85%">
+    <div className="kpi-card h-auto animate-slide-up" style={{ animationDelay: '0.2s' }}>
+      <h3 className="text-lg font-semibold mb-4">Vendor-wise Asset Allocation</h3>
+      <ResponsiveContainer width="100%" height={350}>
         <LineChart
           data={data}
           margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
