@@ -18,7 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2, Send, X, RefreshCw, Users, Download } from 'lucide-react';
+import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2, Send, X, RefreshCw, Users, Download, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { mailingService, VendorDataResponse, VendorInfo, UploadedFileResponse } from '@/services/mailingService';
 
@@ -30,9 +30,21 @@ export default function Mailing() {
   const [sendComplete, setSendComplete] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFileResponse[]>([]);
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<number | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    // Get user role from localStorage
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        const user = JSON.parse(storedUser);
+        setUserRole(user.role);
+      } catch (e) {
+        console.error('Error parsing user from localStorage:', e);
+      }
+    }
     loadUploadedFiles();
   }, []);
 
@@ -45,6 +57,25 @@ export default function Mailing() {
       console.error('Error loading uploaded files:', error);
     } finally {
       setIsLoadingFiles(false);
+    }
+  };
+
+  const handleDeleteFile = async (fileId: number) => {
+    if (!confirm('Are you sure you want to delete this file? This will also delete all associated data.')) {
+      return;
+    }
+
+    setIsDeleting(fileId);
+    try {
+      await mailingService.deleteUploadedFile(fileId);
+      toast.success('File deleted successfully');
+      // Remove from list
+      setUploadedFiles(uploadedFiles.filter(f => f.id !== fileId));
+    } catch (error) {
+      console.error('Error deleting file:', error);
+      toast.error('Failed to delete file');
+    } finally {
+      setIsDeleting(null);
     }
   };
 
@@ -211,6 +242,7 @@ export default function Mailing() {
                     <TableHead className="table-header">Rows</TableHead>
                     <TableHead className="table-header">Vendors</TableHead>
                     <TableHead className="table-header">Uploaded</TableHead>
+                    {userRole === 'ADMIN' && <TableHead className="table-header text-right">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -221,6 +253,23 @@ export default function Mailing() {
                       <TableCell>{uploadedFile.totalRows}</TableCell>
                       <TableCell>{uploadedFile.vendorsCreated}</TableCell>
                       <TableCell>{new Date(uploadedFile.createdAt).toLocaleDateString()}</TableCell>
+                      {userRole === 'ADMIN' && (
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteFile(uploadedFile.id)}
+                            disabled={isDeleting === uploadedFile.id}
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            {isDeleting === uploadedFile.id ? (
+                              <RefreshCw className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-4 h-4" />
+                            )}
+                          </Button>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>

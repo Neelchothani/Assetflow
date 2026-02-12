@@ -157,22 +157,22 @@ public class ExcelParsingService {
                 .typeOfMovement(getCellValueAsString(row.getCell(11)))
                 .assetsServiceDescription(getCellValueAsString(row.getCell(12)))
                 .totalCost(getCellValueAsDouble(row.getCell(13)))
-                .perAssetCost(getCellValueAsDouble(row.getCell(17)))
                 .hold(getCellValueAsDouble(row.getCell(14)))
                 .deduction(getCellValueAsDouble(row.getCell(15)))
                 .finalAmount(getCellValueAsDouble(row.getCell(16)))
-                .vendor(getCellValueAsString(row.getCell(17)))
-                .assetsDeliveryPending(getCellValueAsString(row.getCell(18)))
-                .reasonForAdditionalCharges(getCellValueAsString(row.getCell(19)))
-                .pickUpDate(getCellValueAsString(row.getCell(20)))
-                .status(getCellValueAsString(row.getCell(21))) // Column V: Company-specific status
-                .date(getCellValueAsString(row.getCell(22)))   // Column W: Date field
-                .vendorName(getCellValueAsString(row.getCell(23)))
-                .freightCategory(getCellValueAsString(row.getCell(24)))
-                .project(getCellValueAsString(row.getCell(25)))
-                .invoiceNo(getCellValueAsString(row.getCell(26)))
-                .billingMonth(getCellValueAsString(row.getCell(27)))
-                .billing(getCellValueAsString(row.getCell(28)))
+                .perAssetCost(getCellValueAsDouble(row.getCell(17)))             // Column R - Vendor Cost
+                // Columns S (18) and T (19) are reserved - left empty for future use
+                // All columns after R (column 17) shifted by 2 positions to the right
+                .assetsDeliveryPending(getCellValueAsString(row.getCell(20)))        // Column U
+                .reasonForAdditionalCharges(getCellValueAsString(row.getCell(21)))  // Column V
+                .pickUpDate(getCellValueAsString(row.getCell(22)))                   // Column W
+                .status(getCellValueAsString(row.getCell(23)))                       // Column X - Asset Status
+                .date(getCellValueAsString(row.getCell(24)))                         // Column Y
+                .vendorName(getCellValueAsString(row.getCell(25)))                   // Column Z - Vendor Name
+                .freightCategory(getCellValueAsString(row.getCell(26)))              // Column AA
+                .invoiceNo(getCellValueAsString(row.getCell(28)))                    // Column AC - Invoice No
+                .billingMonth(getCellValueAsString(row.getCell(29)))                 // Column AD
+                .billing(getCellValueAsString(row.getCell(30)))                      // Column AE - Billing Status
                 .build();
     }
 
@@ -384,7 +384,7 @@ public class ExcelParsingService {
                 }
 
                 try {
-                    String vendorName = getCellValueAsString(row.getCell(23)); // Vendor Name column
+                    String vendorName = getCellValueAsString(row.getCell(25)); // Vendor Name column (index 25 = Column Z)
                     if (vendorName != null && !vendorName.trim().isEmpty()) {
                         vendorRowMap.computeIfAbsent(vendorName, k -> new ArrayList<>()).add(i + 1);
                     }

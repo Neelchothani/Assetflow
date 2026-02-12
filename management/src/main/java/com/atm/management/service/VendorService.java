@@ -8,7 +8,9 @@ import com.atm.management.model.Vendor;
 import com.atm.management.repository.AtmRepository;
 import com.atm.management.repository.VendorRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -17,8 +19,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class VendorService {
@@ -131,13 +135,12 @@ public class VendorService {
             }
 
             // Check if vendor already exists by name
-            List<Vendor> existingVendors = vendorRepository.findAll().stream()
-                    .filter(v -> v.getName().equalsIgnoreCase(vendorName.trim()))
-                    .collect(Collectors.toList());
+            Optional<Vendor> existingVendor = vendorRepository.findByNameIgnoreCase(vendorName.trim());
 
-            if (!existingVendors.isEmpty()) {
-                // Vendor already exists, add to response
-                createdVendors.add(mapToResponse(existingVendors.get(0)));
+            if (existingVendor.isPresent()) {
+                // Vendor exists - for Excel imports with vendor name only, consider it exact duplicate
+                Vendor vendor = existingVendor.get();
+                createdVendors.add(mapToResponse(vendor));
                 continue;
             }
 
@@ -169,6 +172,30 @@ public class VendorService {
     @Transactional
     public List<VendorResponse> createVendorsFromExcel(List<String> vendorNames) {
         return createVendorsFromExcel(vendorNames, null);
+    }
+
+    /**
+     * Check if existing vendor record is an exact duplicate (all data identical)
+     * For Excel imports, since we only get the vendor name, exact duplicate check is based on name only
+     */
+    private boolean isExactDuplicateVendor(Vendor existing, String vendorName) {
+        String existingName = existing.getName() != null ? existing.getName().trim() : "";
+        String newName = vendorName != null ? vendorName.trim() : "";
+        return existingName.equalsIgnoreCase(newName);
+    }
+
+    /**
+     * Update existing vendor with new data
+     * Currently used for future enhancements when more vendor data is available from Excel
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    private void updateExistingVendor(Vendor vendor, String vendorName) {
+        // For now, only update the name if different
+        if (vendorName != null && !vendorName.isBlank()) {
+            vendor.setName(vendorName.trim());
+            vendorRepository.save(vendor);
+            log.info("✓ Updated vendor: {}", vendor.getName());
+        }
     }
 
     /**

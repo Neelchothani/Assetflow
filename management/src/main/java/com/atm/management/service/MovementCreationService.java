@@ -75,26 +75,27 @@ public class MovementCreationService {
 
                 Atm atm = atmOptional.get();
 
-                // Check if similar movement already exists (by ATM only, since type is now a string)
+                // Check if movement already exists for this ATM
                 Optional<Movement> existingMovement = movementRepository.findAll().stream()
                         .filter(m -> m.getAtm().getId().equals(atm.getId()) 
                                 && m.getStatus() != Movement.MovementStatus.CANCELLED)
                         .findFirst();
 
                 if (existingMovement.isPresent()) {
-                    // Update existing movement instead of skipping
-                    Movement movement = existingMovement.get();
-                    movement.setMovementType(movementTypeStr != null ? movementTypeStr.trim() : "Unknown");
-                    movement.setFromLocation(fromLocation != null ? fromLocation : "Unknown");
-                    movement.setToLocation(toLocation != null ? toLocation : "Unknown");
-                    movement.setExpectedDelivery(LocalDate.now().plusDays(7)); // Reset delivery date
-                    movement.setNotes("Updated from Excel: " + recipient.getAssetsServiceDescription());
-                    movement.setDocketNo(recipient.getDocketNo());
-                    movement.setBusinessGroup(recipient.getBusinessGroup());
-                    movement.setModeOfBill(recipient.getModeOfBill());
+                    // Movement exists - check if data is identical or different
+                    Movement existingMvmt = existingMovement.get();
+                    boolean isDuplicate = isExactDuplicateMovement(existingMvmt, movementTypeStr, fromLocation, toLocation, recipient);
                     
-                    saveSingleMovement(movement, atmBnaId, createdMovements);
-                    continue;
+                    if (isDuplicate) {
+                        // Skip if all data is identical
+                        skipped.add("Movement for ATM " + atmBnaId + " already exists with identical data");
+                        continue;
+                    } else {
+                        // Update existing movement with new data
+                        updateExistingMovement(existingMvmt, movementTypeStr, fromLocation, toLocation, recipient, uploadedFile, atmBnaId);
+                        createdMovements.add("Movement: " + movementTypeStr + " for ATM " + atmBnaId + " (Updated with new data)");
+                        continue;
+                    }
                 }
 
                 // Create new movement
@@ -202,6 +203,73 @@ public class MovementCreationService {
         }
 
         return Movement.MovementType.RELOCATION; // Default
+    }
+
+    /**
+     * Check if existing movement record is an exact duplicate (all data identical)
+     */
+    private boolean isExactDuplicateMovement(Movement existing, String newMovementType, String newFromLocation, 
+                                              String newToLocation, EmailRecipient recipient) {
+        // Compare key movement fields
+        // If any field differs, it's not a duplicate
+        
+        // Compare movement type
+        String existingType = existing.getMovementType() != null ? existing.getMovementType().trim() : "";
+        String newType = newMovementType != null ? newMovementType.trim() : "Unknown";
+        if (!existingType.equalsIgnoreCase(newType)) {
+            return false;
+        }
+        
+        // Compare from location
+        String existingFrom = existing.getFromLocation() != null ? existing.getFromLocation().trim() : "";
+        String newFrom = newFromLocation != null ? newFromLocation.trim() : "Unknown";
+        if (!existingFrom.equalsIgnoreCase(newFrom)) {
+            return false;
+        }
+        
+        // Compare to location
+        String existingTo = existing.getToLocation() != null ? existing.getToLocation().trim() : "";
+        String newTo = newToLocation != null ? newToLocation.trim() : "Unknown";
+        if (!existingTo.equalsIgnoreCase(newTo)) {
+            return false;
+        }
+        
+        // Compare docket number
+        String existingDocket = existing.getDocketNo() != null ? existing.getDocketNo().trim() : "";
+        String newDocket = recipient.getDocketNo() != null ? recipient.getDocketNo().trim() : "";
+        if (!existingDocket.equalsIgnoreCase(newDocket)) {
+            return false;
+        }
+        
+        // Compare business group
+        String existingBg = existing.getBusinessGroup() != null ? existing.getBusinessGroup().trim() : "";
+        String newBg = recipient.getBusinessGroup() != null ? recipient.getBusinessGroup().trim() : "";
+        if (!existingBg.equalsIgnoreCase(newBg)) {
+            return false;
+        }
+        
+        // All key fields match - this is an exact duplicate
+        return true;
+    }
+
+    /**
+     * Update existing movement with new data from Excel
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    private void updateExistingMovement(Movement movement, String movementType, String fromLocation, 
+                                         String toLocation, EmailRecipient recipient, UploadedFile uploadedFile, String atmBnaId) {
+        movement.setMovementType(movementType != null ? movementType.trim() : "Unknown");
+        movement.setFromLocation(fromLocation != null ? fromLocation : "Unknown");
+        movement.setToLocation(toLocation != null ? toLocation : "Unknown");
+        movement.setExpectedDelivery(LocalDate.now().plusDays(7)); // Reset delivery date
+        movement.setNotes("Updated from Excel: " + recipient.getAssetsServiceDescription());
+        movement.setDocketNo(recipient.getDocketNo());
+        movement.setBusinessGroup(recipient.getBusinessGroup());
+        movement.setModeOfBill(recipient.getModeOfBill());
+        movement.setUploadedFile(uploadedFile);
+        
+        movementRepository.save(movement);
+        log.info("✓ Updated movement for ATM: {}", atmBnaId);
     }
 
     /**

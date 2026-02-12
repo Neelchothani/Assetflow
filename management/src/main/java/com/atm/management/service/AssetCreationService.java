@@ -63,13 +63,28 @@ public class AssetCreationService {
 
                 atmSerialNumber = atmSerialNumber.trim();
 
-                // Duplicate check (DB level, SAFE)
-                if (atmRepository.findBySerialNumberIgnoreCase(atmSerialNumber).isPresent()) {
-                    skipped.add("ATM " + atmSerialNumber + " already exists");
-                    continue;
-                }
-
                 Vendor vendor = findOrCreateVendor(recipient.getVendorName());
+
+                // Check for existing ATM with same serial number
+                var existingAtmOptional = atmRepository.findBySerialNumberIgnoreCase(atmSerialNumber);
+                
+                if (existingAtmOptional.isPresent()) {
+                    // ATM exists - check if data is identical or different
+                    Atm existingAtm = existingAtmOptional.get();
+                    boolean isDuplicate = isExactDuplicate(existingAtm, recipient, vendor);
+                    
+                    if (isDuplicate) {
+                        // Skip if all data is identical
+                        skipped.add("ATM " + atmSerialNumber + " already exists with identical data");
+                        continue;
+                    } else {
+                        // Update existing ATM if data differs
+                        updateExistingAtm(existingAtm, recipient, vendor, uploadedFile);
+                        createdAssets.add("ATM-" + atmSerialNumber + " (Updated with new data from Vendor: " + vendor.getName() + ")");
+                        log.info("ATM updated with new data: {}", atmSerialNumber);
+                        continue;
+                    }
+                }
 
                 // If freight category present on the row and vendor doesn't have it, set it
                 if ((vendor.getFreightCategory() == null || vendor.getFreightCategory().isBlank())
@@ -191,7 +206,7 @@ public class AssetCreationService {
         atm.setVendor(vendor);
         atm.setUploadedFile(uploadedFile);
 
-        // Use status field (Column V) for asset_status - contains company-specific status
+        // Use status field (Column X) for asset_status - contains company-specific status
         atm.setAssetStatus(
                 recipient.getStatus() != null && !recipient.getStatus().isBlank()
                         ? recipient.getStatus()
@@ -236,11 +251,11 @@ public class AssetCreationService {
         atm.setFinalAmount(finalAmt != null ? BigDecimal.valueOf(finalAmt) : BigDecimal.ZERO);
         atm.setVendorCost(perAsset != null ? BigDecimal.valueOf(perAsset) : BigDecimal.ZERO);
 
-        // Preserve `value` for legacy uses; prefer vendorCost then totalAmount
-        if (perAsset != null && perAsset > 0) {
-            atm.setValue(BigDecimal.valueOf(perAsset));
-        } else if (totalCost != null && totalCost > 0) {
+        // Set `value` from totalCost (Column N) as primary, fallback to vendorCost (Column R)
+        if (totalCost != null && totalCost > 0) {
             atm.setValue(BigDecimal.valueOf(totalCost));
+        } else if (perAsset != null && perAsset > 0) {
+            atm.setValue(BigDecimal.valueOf(perAsset));
         } else {
             atm.setValue(BigDecimal.ZERO);
         }
@@ -308,5 +323,110 @@ public class AssetCreationService {
                 .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
         vendor.setTotalCost(sum);
         vendorRepository.save(vendor);
+    }
+
+    /**
+     * Check if existing ATM record is an exact duplicate (all data identical)
+     */
+    private boolean isExactDuplicate(Atm existing, EmailRecipient newData, Vendor vendor) {
+        // Compare key fields to determine if this is a duplicate or an update
+        // If any field differs, it's not a duplicate
+        
+        // Compare location
+        String existingLocation = existing.getLocation() != null ? existing.getLocation().trim() : "";
+        String newLocation = newData.getFromLocation() != null ? newData.getFromLocation().trim() : "";
+        if (!existingLocation.equalsIgnoreCase(newLocation)) {
+            return false;
+        }
+
+        // Compare vendor
+        Long existingVendorId = existing.getVendor() != null ? existing.getVendor().getId() : null;
+        Long newVendorId = vendor.getId();
+        if (!java.util.Objects.equals(existingVendorId, newVendorId)) {
+            return false;
+        }
+
+        // Compare total cost (value)
+        Double newTotalCost = newData.getTotalCost();
+        if (newTotalCost != null) {
+            if (existing.getValue() == null || !existing.getValue().equals(java.math.BigDecimal.valueOf(newTotalCost))) {
+                return false;
+            }
+        }
+
+        // Compare billing month
+        String existingBillingMonth = existing.getBillingMonth() != null ? existing.getBillingMonth().trim() : "";
+        String newBillingMonth = newData.getBillingMonth() != null ? newData.getBillingMonth().trim() : "";
+        if (!existingBillingMonth.equalsIgnoreCase(newBillingMonth)) {
+            return false;
+        }
+
+        // Compare billing status
+        String existingBillingStatus = existing.getBillingStatus() != null ? existing.getBillingStatus().trim() : "";
+        String newBillingStatus = newData.getBilling() != null ? newData.getBilling().trim() : "";
+        if (!existingBillingStatus.equalsIgnoreCase(newBillingStatus)) {
+            return false;
+        }
+
+        // All key fields match - this is an exact duplicate
+        return true;
+    }
+
+    /**
+     * Update existing ATM with new data from Excel
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    private void updateExistingAtm(Atm atm, EmailRecipient recipient, Vendor vendor, UploadedFile uploadedFile) {
+        // Update fields that may have changed
+        
+        // Update location if different
+        if (recipient.getFromLocation() != null && !recipient.getFromLocation().isBlank()) {
+            atm.setLocation(recipient.getFromLocation());
+        }
+
+        // Update vendor if different
+        if (vendor.getId() != null && !java.util.Objects.equals(atm.getVendor().getId(), vendor.getId())) {
+            atm.setVendor(vendor);
+        }
+
+        // Update cost fields
+        Double totalCost = recipient.getTotalCost();
+        Double hold = recipient.getHold();
+        Double deduction = recipient.getDeduction();
+        Double finalAmt = recipient.getFinalAmount();
+        Double perAsset = recipient.getPerAssetCost();
+
+        if (totalCost != null && totalCost > 0) {
+            atm.setValue(java.math.BigDecimal.valueOf(totalCost));
+        } else if (perAsset != null && perAsset > 0) {
+            atm.setValue(java.math.BigDecimal.valueOf(perAsset));
+        }
+
+        atm.setTotalAmount(totalCost != null ? java.math.BigDecimal.valueOf(totalCost) : java.math.BigDecimal.ZERO);
+        atm.setHold(hold != null ? java.math.BigDecimal.valueOf(hold) : java.math.BigDecimal.ZERO);
+        atm.setDeduction(deduction != null ? java.math.BigDecimal.valueOf(deduction) : java.math.BigDecimal.ZERO);
+        atm.setFinalAmount(finalAmt != null ? java.math.BigDecimal.valueOf(finalAmt) : java.math.BigDecimal.ZERO);
+        atm.setVendorCost(perAsset != null ? java.math.BigDecimal.valueOf(perAsset) : java.math.BigDecimal.ZERO);
+
+        // Update billing info
+        if (recipient.getBillingMonth() != null && !recipient.getBillingMonth().isBlank()) {
+            atm.setBillingMonth(recipient.getBillingMonth());
+        }
+
+        if (recipient.getBilling() != null && !recipient.getBilling().isBlank()) {
+            atm.setBillingStatus(recipient.getBilling());
+        }
+
+        // Update pickup date if provided
+        if (recipient.getPickUpDate() != null && !recipient.getPickUpDate().isBlank()) {
+            try {
+                atm.setPickupDate(LocalDate.parse(recipient.getPickUpDate()));
+            } catch (Exception e) {
+                log.warn("Invalid pickup date: {}", recipient.getPickUpDate());
+            }
+        }
+
+        // Save updated ATM
+        atmRepository.save(atm);
     }
 }

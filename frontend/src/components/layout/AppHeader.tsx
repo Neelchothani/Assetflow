@@ -24,19 +24,27 @@ export function AppHeader({ onMenuClick, showMenuButton }: AppHeaderProps) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // First try to get user from localStorage
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        // If localStorage data is invalid, fetch from API
-        authService.getCurrentUser().then((u) => setUser(u)).catch(() => setUser(null));
-      }
-    } else {
-      // If no user in localStorage, fetch from API
-      authService.getCurrentUser().then((u) => setUser(u)).catch(() => setUser(null));
-    }
+    // Always fetch the latest user data from the API to ensure role is current
+    authService
+      .getCurrentUser()
+      .then((u) => {
+        setUser(u);
+        // Update localStorage with the latest user data
+        localStorage.setItem('user', JSON.stringify(u));
+      })
+      .catch(() => {
+        // If API fails, fall back to localStorage
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          try {
+            setUser(JSON.parse(storedUser));
+          } catch (e) {
+            setUser(null);
+          }
+        } else {
+          setUser(null);
+        }
+      });
   }, []);
 
   const handleLogout = async () => {

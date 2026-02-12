@@ -184,7 +184,7 @@ export default function Vendors() {
       key: 'totalCost',
       header: 'Total Cost',
       render: (vendor) => (
-        <span className="font-medium">₹{new Intl.NumberFormat('en-IN').format(Number(vendor.totalCost || 0))}</span>
+        <span className="font-medium">₹{new Intl.NumberFormat('en-IN').format(Number(vendorCostMap.get(vendor.id) || 0))}</span>
       ),
     },
     {
@@ -202,7 +202,6 @@ export default function Vendors() {
   const totalAssets = vendors.reduce((sum, v) => sum + (v.assetsAllocated || 0), 0);
   const activeVendors = vendors.filter((v) => v.status === 'active').length;
   const inactiveVendors = vendors.filter((v) => v.status === 'inactive').length;
-  const totalVendorCost = vendors.reduce((sum, v) => sum + (Number(v.totalCost) || 0), 0);
   const avgRating =
     vendors.length > 0
       ? (vendors.reduce((sum, v) => sum + v.rating, 0) / vendors.length).toFixed(1)
@@ -214,15 +213,32 @@ export default function Vendors() {
     const map = new Map<string, number>();
     costings.forEach((it) => {
       const name = it.vendor?.name || it.atm?.name || 'Unknown';
-      map.set(name, (map.get(name) || 0) + (Number(it.baseCost) || 0));
+      map.set(name, (map.get(name) || 0) + (Number(it.vendorCost) || 0));
     });
-    return Array.from(map.entries()).map(([vendor, baseCost]) => ({ vendor, baseCost }));
+    return Array.from(map.entries()).map(([vendor, vendorCost]) => ({ vendor, vendorCost }));
   }, [costings]);
 
   const costingTotals = useMemo(() => {
     const totalBase = costings.reduce((s, it) => s + (Number(it.baseCost) || 0), 0);
     const totalVendor = costings.reduce((s, it) => s + (Number(it.vendorCost) || 0), 0);
     return { totalBase, totalVendor };
+  }, [costings]);
+
+  const selectedVendorCosts = useMemo(() => {
+    if (!selectedVendor) return 0;
+    return costings
+      .filter((it) => it.vendor?.id === selectedVendor.id)
+      .reduce((s, it) => s + (Number(it.vendorCost) || 0), 0);
+  }, [selectedVendor, costings]);
+
+  const vendorCostMap = useMemo(() => {
+    const map = new Map<number, number>();
+    costings.forEach((it) => {
+      if (it.vendor?.id) {
+        map.set(it.vendor.id, (map.get(it.vendor.id) || 0) + (Number(it.vendorCost) || 0));
+      }
+    });
+    return map;
   }, [costings]);
 
   const handleExportVendors = () => {
@@ -334,8 +350,8 @@ export default function Vendors() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2 h-[360px]">
           <CardHeader>
-            <CardTitle>Vendor-wise Base Costings</CardTitle>
-            <CardDescription>Aggregated base costs per vendor</CardDescription>
+            <CardTitle>Vendor-wise Vendor Costs</CardTitle>
+            <CardDescription>Aggregated vendor costs per vendor</CardDescription>
           </CardHeader>
           <CardContent className="h-[300px]">
             {costingsLoading ? (
@@ -365,14 +381,14 @@ export default function Vendors() {
                         return (
                           <div className="bg-card p-3 border border-border rounded shadow-lg">
                             <p className="text-sm font-medium text-foreground">{data.vendor}</p>
-                            <p className="text-sm text-[#0ea5e9]">₹{inFormatter.format(Number(data.baseCost))}</p>
+                            <p className="text-sm text-[#0ea5e9]">₹{inFormatter.format(Number(data.vendorCost))}</p>
                           </div>
                         );
                       }
                       return null;
                     }}
                   />
-                  <Line type="monotone" dataKey="baseCost" stroke="#0ea5e9" strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="vendorCost" stroke="#0ea5e9" strokeWidth={2} dot={{ r: 3 }} />
                 </LineChart>
               </ResponsiveContainer>
             )}
@@ -396,13 +412,13 @@ export default function Vendors() {
                     {vendorSeries.map((item, idx) => (
                       <div key={idx} className="flex items-center justify-between pb-2 border-b last:border-0">
                         <div className="text-sm truncate flex-1 text-muted-foreground">{item.vendor}</div>
-                        <div className="font-semibold ml-2">₹{inFormatter.format(Number(item.baseCost))}</div>
+                        <div className="font-semibold ml-2">₹{inFormatter.format(Number(item.vendorCost))}</div>
                       </div>
                     ))}
                   </div>
                   <div className="flex items-center justify-between pt-2 border-t font-bold text-base">
                     <div className="text-sm">Total</div>
-                    <div>₹{inFormatter.format(costingTotals.totalBase)}</div>
+                    <div>₹{inFormatter.format(costingTotals.totalVendor)}</div>
                   </div>
                 </div>
               )}
@@ -505,24 +521,24 @@ export default function Vendors() {
                 <CardContent>
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Total Cost</span>
+                      <span className="text-muted-foreground">Vendor Cost</span>
                       <span className="text-xl font-bold">
-                        ₹{new Intl.NumberFormat('en-IN').format(Number(selectedVendor.totalCost || 0))}
+                        ₹{new Intl.NumberFormat('en-IN').format(selectedVendorCosts || 0)}
                       </span>
                     </div>
                     <div className="space-y-1">
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Cost Utilization</span>
                         <span className="font-medium">
-                          {totalVendorCost > 0
-                            ? `${((Number(selectedVendor.totalCost || 0) / totalVendorCost) * 100).toFixed(1)}%`
+                          {costingTotals.totalVendor > 0
+                            ? `${((selectedVendorCosts || 0) / costingTotals.totalVendor * 100).toFixed(1)}%`
                             : '0%'}
                         </span>
                       </div>
                       <div className="h-2 bg-muted rounded-full overflow-hidden">
                         <div
                           className="h-full bg-primary rounded-full"
-                          style={{ width: totalVendorCost > 0 ? `${(Number(selectedVendor.totalCost || 0) / totalVendorCost) * 100}%` : '0%' }}
+                          style={{ width: costingTotals.totalVendor > 0 ? `${((selectedVendorCosts || 0) / costingTotals.totalVendor) * 100}%` : '0%' }}
                         />
                       </div>
                     </div>

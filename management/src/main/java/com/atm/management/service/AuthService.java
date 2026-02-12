@@ -100,7 +100,17 @@ public class AuthService {
         user.setName(request.getName());
         user.setEmail(request.getEmail());
         user.setPassword(encodedPassword);
-        user.setRole(User.UserRole.ADMIN); // Always set to ADMIN
+        // Set role from request, default to MANAGER if not provided
+        User.UserRole role = User.UserRole.MANAGER;
+        if (request.getRole() != null && !request.getRole().isEmpty()) {
+            try {
+                role = User.UserRole.valueOf(request.getRole().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid role provided: {}, defaulting to MANAGER", request.getRole());
+                role = User.UserRole.MANAGER;
+            }
+        }
+        user.setRole(role);
         user.setCompany(request.getCompany());
         user.setPhone(request.getPhone());
         user.setIsActive(true);

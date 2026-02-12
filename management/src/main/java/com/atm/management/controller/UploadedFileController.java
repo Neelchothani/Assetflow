@@ -5,6 +5,7 @@ import com.atm.management.dto.response.DeletionSummaryResponse;
 import com.atm.management.service.UploadedFileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -40,8 +41,10 @@ public class UploadedFileController {
     /**
      * Delete uploaded file and associated data
      * DELETE /api/uploaded-files/{id}
+     * Only accessible to ADMIN users
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<DeletionSummaryResponse> deleteUploadedFile(@PathVariable Long id) {
         DeletionSummaryResponse response = uploadedFileService.deleteUploadedFile(id);
         return ResponseEntity.ok(response);
