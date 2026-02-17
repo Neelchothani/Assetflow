@@ -101,6 +101,7 @@ export interface CostingItem {
     name: string;
     serialNumber?: string;
     location?: string;
+    notes?: string;
   };
   vendor?: {
     id: number;
@@ -112,6 +113,7 @@ export interface CostingItem {
   deduction?: number; // deduction (column P)
   finalAmount?: number; // final_amount (column Q)
   vendorCost?: number; // vendor cost per asset (column R)
+  billingMonth?: string; // month from Excel (e.g., "Apr-25")
   status?: string;
   submittedBy?: string;
   submittedDate?: string;

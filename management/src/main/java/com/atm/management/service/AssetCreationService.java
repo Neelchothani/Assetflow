@@ -219,8 +219,8 @@ public class AssetCreationService {
         atm.setCurrentCashBalance(BigDecimal.ZERO);
 
         atm.setBillingMonth(
-                recipient.getBillingMonth() != null && !recipient.getBillingMonth().isBlank()
-                        ? recipient.getBillingMonth()
+                recipient.getProvisionMonth() != null && !recipient.getProvisionMonth().isBlank()
+                        ? recipient.getProvisionMonth()
                         : "N/A"
         );
 
@@ -409,8 +409,8 @@ public class AssetCreationService {
         atm.setVendorCost(perAsset != null ? java.math.BigDecimal.valueOf(perAsset) : java.math.BigDecimal.ZERO);
 
         // Update billing info
-        if (recipient.getBillingMonth() != null && !recipient.getBillingMonth().isBlank()) {
-            atm.setBillingMonth(recipient.getBillingMonth());
+        if (recipient.getProvisionMonth() != null && !recipient.getProvisionMonth().isBlank()) {
+            atm.setBillingMonth(recipient.getProvisionMonth());
         }
 
         if (recipient.getBilling() != null && !recipient.getBilling().isBlank()) {

@@ -138,13 +138,10 @@ public class ExcelParsingService {
         return message.toString();
     }
 
-    /**
-     * Parse a single row into EmailRecipient object
-     */
     private EmailRecipient parseRow(Row row, int rowIndex) {
         return EmailRecipient.builder()
                 .sNo(getCellValueAsInteger(row.getCell(0)))
-                .provisionMonth(getCellValueAsString(row.getCell(1)))
+                .provisionMonth(normalizeProvisionMonth(getCellValueAsString(row.getCell(1))))
                 .atmBnaId(getCellValueAsString(row.getCell(2)))
                 .docketNo(getCellValueAsString(row.getCell(3)))
                 .bankName(getCellValueAsString(row.getCell(4)))
@@ -173,6 +170,7 @@ public class ExcelParsingService {
                 .invoiceNo(getCellValueAsString(row.getCell(28)))                    // Column AC - Invoice No
                 .billingMonth(getCellValueAsString(row.getCell(29)))                 // Column AD
                 .billing(getCellValueAsString(row.getCell(30)))                      // Column AE - Billing Status
+                .vendor(getCellValueAsString(row.getCell(25)))                      // Backup vendor field for compatibility
                 .build();
     }
 
@@ -220,7 +218,7 @@ public class ExcelParsingService {
     }
 
     /**
-     * Get cell value as String
+     * Get cell value as String, with special handling for provisionMonth
      */
     private String getCellValueAsString(Cell cell) {
         if (cell == null) {
@@ -233,7 +231,19 @@ public class ExcelParsingService {
                     return cell.getStringCellValue().trim();
                 case NUMERIC:
                     if (DateUtil.isCellDateFormatted(cell)) {
-                        // Convert date to ISO format (YYYY-MM-DD)
+                        // Special handling for provisionMonth (column 1)
+                        // Keep it in "Mon-YY" format instead of ISO date format
+                        if (cell.getColumnIndex() == 1) {
+                            java.util.Date date = cell.getDateCellValue();
+                            java.time.LocalDate localDate = date.toInstant()
+                                    .atZone(java.time.ZoneId.systemDefault())
+                                    .toLocalDate();
+                            // Format as "Mon-YY" (e.g., "Nov-25")
+                            java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("MMM-yy");
+                            return localDate.format(formatter);
+                        }
+                        
+                        // For other date columns, convert to ISO format (YYYY-MM-DD)
                         java.util.Date date = cell.getDateCellValue();
                         java.time.LocalDate localDate = date.toInstant()
                                 .atZone(java.time.ZoneId.systemDefault())
@@ -306,6 +316,27 @@ public class ExcelParsingService {
             log.warn("Error reading cell value as double", e);
         }
         return null;
+    }
+
+    /**
+     * Normalize provision month format to "Mon-YY" (e.g., "Sep-25", "Oct-25")
+     * Handles both formats: "Sep-25" and "Sep'25" or "Sep'25" and converts them to "Sep-25"
+     */
+    private String normalizeProvisionMonth(String provisionMonth) {
+        if (provisionMonth == null || provisionMonth.trim().isEmpty()) {
+            return null;
+        }
+
+        String normalized = provisionMonth.trim();
+        
+        // Replace apostrophe with hyphen: "Oct'25" -> "Oct-25"
+        normalized = normalized.replace("'", "-");
+        
+        // Also handle other variations
+        normalized = normalized.replace("_", "-");
+        
+        log.debug("Normalized provision month: {} -> {}", provisionMonth, normalized);
+        return normalized;
     }
 
     /**

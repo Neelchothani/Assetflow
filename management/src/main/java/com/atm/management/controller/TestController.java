@@ -2,6 +2,8 @@ package com.atm.management.controller;
 
 import com.atm.management.model.User;
 import com.atm.management.repository.UserRepository;
+import com.atm.management.repository.CostingRepository;
+import com.atm.management.repository.AtmRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -24,6 +26,8 @@ public class TestController {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final CostingRepository costingRepository;
+    private final AtmRepository atmRepository;
 
     @GetMapping("/health")
     public Map<String, String> health() {
@@ -195,6 +199,37 @@ public class TestController {
         } catch (Exception e) {
             response.put("error", e.getMessage());
             log.error("Failed to check user", e);
+        }
+
+        return response;
+    }
+
+    @PostMapping("/cleanup-costing-data")
+    public Map<String, Object> cleanupCostingData() {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            log.warn("⚠️  CLEANUP: Deleting all costings and ATMs from database");
+            
+            long costingsDeleted = costingRepository.count();
+            long atmsDeleted = atmRepository.count();
+            
+            // Delete all costings first (due to foreign key constraints)
+            costingRepository.deleteAll();
+            log.info("✓ Deleted {} costings", costingsDeleted);
+            
+            // Then delete all ATMs
+            atmRepository.deleteAll();
+            log.info("✓ Deleted {} ATMs", atmsDeleted);
+            
+            response.put("success", true);
+            response.put("costingsDeleted", costingsDeleted);
+            response.put("atmsDeleted", atmsDeleted);
+            response.put("message", "Cleanup completed! Old data removed. Re-upload your Excel file to create fresh data with correct billing months.");
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            log.error("Cleanup failed", e);
         }
 
         return response;

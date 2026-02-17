@@ -228,6 +228,7 @@ public class CostingService {
         BigDecimal finalAmountFromAtm = costing.getAtm().getFinalAmount();
         BigDecimal vendorCostFromAtm = costing.getAtm().getVendorCost();
         String billingStatusFromAtm = costing.getAtm().getBillingStatus();
+        String billingMonthFromAtm = costing.getAtm().getBillingMonth();
 
         return new CostingResponse(
             costing.getId(),
@@ -239,6 +240,7 @@ public class CostingService {
                 finalAmountFromAtm,
                 vendorCostFromAtm,
                 billingStatusFromAtm,
+                billingMonthFromAtm,
             costing.getStatus().name(),
             costing.getSubmittedBy(),
             costing.getSubmittedDate(),

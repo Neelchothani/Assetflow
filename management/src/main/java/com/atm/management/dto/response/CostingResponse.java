@@ -22,6 +22,7 @@ public class CostingResponse {
     private BigDecimal finalAmount; // maps to atm.finalAmount (column Q)
     private BigDecimal vendorCost; // maps to atm.vendorCost (column R)
     private String billingStatus; // from atm.billingStatus
+    private String billingMonth; // from atm.billingMonth (e.g., "Apr-25")
     private String status;
     private String submittedBy;
     private LocalDate submittedDate;
