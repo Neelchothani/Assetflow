@@ -12,6 +12,7 @@ import Movements from "./pages/Movements";
 import Mailing from "./pages/Mailing";
 import Vendors from "./pages/Vendors";
 import Costing from "./pages/Costing";
+import Notices from "./pages/Notices";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -60,6 +61,7 @@ const App = () => {
             <Route path="/mailing" element={<Mailing />} />
             <Route path="/vendors" element={<Vendors />} />
             <Route path="/costing" element={<Costing />} />
+            <Route path="/notices" element={<Notices />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
           

@@ -1,0 +1,1 @@
+ALTER TABLE atms ADD COLUMN IF NOT EXISTS amount_received VARCHAR(50);

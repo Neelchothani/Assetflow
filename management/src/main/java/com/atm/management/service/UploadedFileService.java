@@ -72,12 +72,18 @@ public class UploadedFileService {
         int movementsDeletedDirect = movementRepository.deleteByUploadedFileId(id);
         log.info("Movements deleted (direct): {}", movementsDeletedDirect);
 
-        // Step 5: Delete vendors created from this uploaded file
+        // Step 5: Delete vendors created from this uploaded file (only those with no remaining ATM references)
         int vendorsDeleted = vendorRepository.deleteByUploadedFileId(id);
         log.info("Vendors deleted: {}", vendorsDeleted);
-        
-        // Step 6: Finally, delete the uploaded file record
-        uploadedFileRepository.delete(uploadedFile);
+
+        // Step 5b: Null out uploaded_file_id on any remaining vendors still pointing at this file
+        // (These are vendors shared with other uploaded files - they must stay but must not block the delete)
+        int vendorsDetached = vendorRepository.clearUploadedFileReference(id);
+        log.info("Vendors detached from uploaded file: {}", vendorsDetached);
+
+        // Step 6: Finally, delete the uploaded file record itself
+        // Use deleteById so JPA re-fetches a fresh (clean) entity after context was cleared by bulk deletes above
+        uploadedFileRepository.deleteById(id);
         log.info("Uploaded file deleted successfully");
         
         // Return summary of deletions (total movements = direct + from ATMs)

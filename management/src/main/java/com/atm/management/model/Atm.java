@@ -75,6 +75,14 @@ public class Atm {
 
     private LocalDate pickupDate;
 
+    private LocalDate deliveryDate;
+
+    @Column(name = "amount_received")
+    private String amountReceived;
+
+    @Column(name = "notice_generated", nullable = false)
+    private Boolean noticeGenerated = false;
+
     private String manufacturer;
 
     private String model;
@@ -105,6 +113,9 @@ public class Atm {
         }
         if (currentCashBalance == null) {
             currentCashBalance = BigDecimal.ZERO;
+        }
+        if (noticeGenerated == null) {
+            noticeGenerated = false;
         }
     }
 

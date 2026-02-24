@@ -142,6 +142,8 @@ public class AtmService {
         atm.setBillingMonth(request.getBillingMonth());
         atm.setBillingStatus(request.getBillingStatus());
         atm.setPickupDate(request.getPickupDate());
+        atm.setDeliveryDate(request.getDeliveryDate());
+        atm.setAmountReceived(request.getAmountReceived());
 
         if (request.getVendorId() != null) {
             Vendor vendor = vendorRepository.findById(request.getVendorId())
@@ -175,6 +177,8 @@ public class AtmService {
                 atm.getLastMaintenanceDate(),
                 atm.getBillingStatus(),
                 atm.getPickupDate(),
+                atm.getDeliveryDate(),
+                atm.getAmountReceived(),
                 atm.getManufacturer(),
                 atm.getModel(),
                 atm.getCashCapacity(),

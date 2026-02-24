@@ -14,7 +14,7 @@ public interface CostingRepository extends JpaRepository<Costing, Long> {
     List<Costing> findByAtmId(Long atmId);
     List<Costing> findByVendorId(Long vendorId);
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("DELETE FROM Costing c WHERE c.atm.id IN (SELECT a.id FROM Atm a WHERE a.uploadedFile.id = :uploadedFileId)")
     int deleteByAtmUploadedFileId(Long uploadedFileId);
 

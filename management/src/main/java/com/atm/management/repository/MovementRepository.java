@@ -24,11 +24,11 @@ public interface MovementRepository extends JpaRepository<Movement, Long> {
     @Query("SELECT m FROM Movement m ORDER BY m.initiatedDate DESC")
     List<Movement> findRecentMovements();
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("DELETE FROM Movement m WHERE m.uploadedFile.id = ?1")
     int deleteByUploadedFileId(Long uploadedFileId);
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("DELETE FROM Movement m WHERE m.atm.uploadedFile.id = ?1 OR m.uploadedFile.id = ?1")
     int deleteByAtmUploadedFileId(Long uploadedFileId);
 }

@@ -25,7 +25,7 @@ public interface AtmRepository extends JpaRepository<Atm, Long> {
     @Query("SELECT a FROM Atm a WHERE a.name LIKE %?1% OR a.serialNumber LIKE %?1%")
     List<Atm> searchByNameOrSerial(String keyword);
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("DELETE FROM Atm a WHERE a.uploadedFile.id = ?1")
     int deleteByUploadedFileId(Long uploadedFileId);
 }

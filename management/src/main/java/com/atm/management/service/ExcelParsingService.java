@@ -39,6 +39,7 @@ public class ExcelParsingService {
              Workbook workbook = new XSSFWorkbook(inputStream)) {
 
             Sheet sheet = workbook.getSheetAt(0);
+            Map<String, Integer> colMap = buildColumnIndexMap(sheet);
             List<EmailRecipient> allRecipients = new ArrayList<>();
             List<String> warnings = new ArrayList<>();
             Map<String, Set<Integer>> vendorRowMap = new HashMap<>();
@@ -53,7 +54,7 @@ public class ExcelParsingService {
 
                 totalRows++;
                 try {
-                    EmailRecipient recipient = parseRow(row, i);
+                    EmailRecipient recipient = parseRow(row, i, colMap);
 
                     // Validate vendor name exists
                     if (recipient.getVendorName() == null || recipient.getVendorName().trim().isEmpty()) {
@@ -138,8 +139,73 @@ public class ExcelParsingService {
         return message.toString();
     }
 
-    private EmailRecipient parseRow(Row row, int rowIndex) {
-        return EmailRecipient.builder()
+    /**
+     * Build a normalized header name -> column index map from the sheet's first row.
+     * Normalization: lowercase, letters and digits only (strips spaces and special chars).
+     */
+    private Map<String, Integer> buildColumnIndexMap(Sheet sheet) {
+        Map<String, Integer> map = new HashMap<>();
+        Row headerRow = sheet.getRow(0);
+        if (headerRow == null) return map;
+        for (int i = 0; i < headerRow.getLastCellNum(); i++) {
+            Cell cell = headerRow.getCell(i);
+            if (cell != null) {
+                String raw = getCellValueAsString(cell);
+                if (raw != null && !raw.isBlank()) {
+                    String normalized = raw.toLowerCase().replaceAll("[^a-z0-9]", "");
+                    map.putIfAbsent(normalized, i); // keep first occurrence
+                }
+            }
+        }
+        log.debug("Column map built: {}", map);
+        return map;
+    }
+
+    /**
+     * Find a column index by trying normalized key names in order.
+     * Returns fallback if none found.
+     */
+    private int findCol(Map<String, Integer> colMap, int fallback, String... normalizedKeys) {
+        for (String key : normalizedKeys) {
+            if (colMap.containsKey(key)) return colMap.get(key);
+        }
+        return fallback;
+    }
+
+    /**
+     * Find a column index by prefix match (e.g. "billingmonth" matches "billingmonthnecessary").
+     * Returns fallback if none found.
+     */
+    private int findColByPrefix(Map<String, Integer> colMap, int fallback, String prefix) {
+        return colMap.entrySet().stream()
+                .filter(e -> e.getKey().startsWith(prefix))
+                .mapToInt(Map.Entry::getValue)
+                .findFirst()
+                .orElse(fallback);
+    }
+
+    /**
+     * Find a column index by prefix match, optionally excluding a sub-prefix.
+     * e.g. prefix="billing", exclude="billingmonth" → finds "billing" or "billingstatus" but not "billingmonth"
+     */
+    private int findColByPrefixExcluding(Map<String, Integer> colMap, int fallback, String prefix, String... excludePrefixes) {
+        return colMap.entrySet().stream()
+                .filter(e -> {
+                    String k = e.getKey();
+                    if (!k.startsWith(prefix)) return false;
+                    for (String ex : excludePrefixes) {
+                        if (k.startsWith(ex)) return false;
+                    }
+                    return true;
+                })
+                .mapToInt(Map.Entry::getValue)
+                .findFirst()
+                .orElse(fallback);
+    }
+
+    private EmailRecipient parseRow(Row row, int rowIndex, Map<String, Integer> colMap) {
+        // --- Columns A-R (index 0-17) are identical in all file formats ---
+        EmailRecipient.EmailRecipientBuilder builder = EmailRecipient.builder()
                 .sNo(getCellValueAsInteger(row.getCell(0)))
                 .provisionMonth(normalizeProvisionMonth(getCellValueAsString(row.getCell(1))))
                 .atmBnaId(getCellValueAsString(row.getCell(2)))
@@ -157,21 +223,72 @@ public class ExcelParsingService {
                 .hold(getCellValueAsDouble(row.getCell(14)))
                 .deduction(getCellValueAsDouble(row.getCell(15)))
                 .finalAmount(getCellValueAsDouble(row.getCell(16)))
-                .perAssetCost(getCellValueAsDouble(row.getCell(17)))             // Column R - Vendor Cost
-                // Columns S (18) and T (19) are reserved - left empty for future use
-                // All columns after R (column 17) shifted by 2 positions to the right
-                .assetsDeliveryPending(getCellValueAsString(row.getCell(20)))        // Column U
-                .reasonForAdditionalCharges(getCellValueAsString(row.getCell(21)))  // Column V
-                .pickUpDate(getCellValueAsString(row.getCell(22)))                   // Column W
-                .status(getCellValueAsString(row.getCell(23)))                       // Column X - Asset Status
-                .date(getCellValueAsString(row.getCell(24)))                         // Column Y
-                .vendorName(getCellValueAsString(row.getCell(25)))                   // Column Z - Vendor Name
-                .freightCategory(getCellValueAsString(row.getCell(26)))              // Column AA
-                .invoiceNo(getCellValueAsString(row.getCell(28)))                    // Column AC - Invoice No
-                .billingMonth(getCellValueAsString(row.getCell(29)))                 // Column AD
-                .billing(getCellValueAsString(row.getCell(30)))                      // Column AE - Billing Status
-                .vendor(getCellValueAsString(row.getCell(25)))                      // Backup vendor field for compatibility
-                .build();
+                .perAssetCost(getCellValueAsDouble(row.getCell(17)));  // Column R
+
+        // --- Columns S+ vary by file format; use header-based detection ---
+
+        // Pick Up Date: Hitachi="Pick Up Date"(W/22), NCR="Pickup Date"(U/20)
+        // Both normalize to "pickupdate"
+        int pickupIdx = findCol(colMap, 22, "pickupdate", "pickup");
+        builder.pickUpDate(getCellValueAsString(row.getCell(pickupIdx)));
+
+        // Asset Status: "Status" in both files (different column positions)
+        // Use exact match so we don't accidentally match "Billing Status"
+        int statusIdx = findCol(colMap, 23, "status");
+        builder.status(getCellValueAsString(row.getCell(statusIdx)));
+
+        // Vendor Name: "Vendor Name" in both files
+        int vendorNameIdx = findCol(colMap, 25, "vendorname");
+        builder.vendorName(getCellValueAsString(row.getCell(vendorNameIdx)));
+        builder.vendor(getCellValueAsString(row.getCell(vendorNameIdx)));
+
+        // Freight Category: only in Hitachi (AA/26)
+        int freightIdx = findCol(colMap, 26, "freightcategory", "freight");
+        builder.freightCategory(getCellValueAsString(row.getCell(freightIdx)));
+
+        // Invoice No: Hitachi AC(28), may differ in NCR
+        int invoiceIdx = findCol(colMap, 28, "invoiceno", "invoice");
+        builder.invoiceNo(getCellValueAsString(row.getCell(invoiceIdx)));
+
+        // Billing Month: "Billing Month" or "Billing Month (necessary)" → prefix "billingmonth"
+        int billingMonthIdx = findColByPrefix(colMap, 29, "billingmonth");
+        builder.billingMonth(getCellValueAsString(row.getCell(billingMonthIdx)));
+
+        // Billing Status: "Billing" (Hitachi AE/30) or "Billing Status..." (NCR AC/28)
+        // Use prefix "billing" but exclude "billingmonth"
+        int billingIdx = findColByPrefixExcluding(colMap, 30, "billing", "billingmonth");
+        builder.billing(getCellValueAsString(row.getCell(billingIdx)));
+
+        // Delivery Date: "Delivery Date" (NCR AE/30 only) — optional, null for Hitachi
+        Integer deliveryDateIdx = colMap.get("deliverydate");
+        if (deliveryDateIdx != null) {
+            builder.deliveryDate(getCellValueAsString(row.getCell(deliveryDateIdx)));
+        }
+
+        // Amount Received: column AG (index 32) — "Received" or "Not received"
+        Integer amountReceivedIdx = colMap.get("amountreceived");
+        if (amountReceivedIdx != null) {
+            builder.amountReceived(getCellValueAsString(row.getCell(amountReceivedIdx)));
+        } else {
+            // Fallback to fixed index 32 (AG)
+            Cell arCell = row.getCell(32);
+            if (arCell != null) {
+                String val = getCellValueAsString(arCell);
+                if (val != null && (val.equalsIgnoreCase("Received") || val.toLowerCase().contains("not received"))) {
+                    builder.amountReceived(val);
+                }
+            }
+        }
+
+        // Remaining fields (less critical, keep fallback indices)
+        builder.assetsDeliveryPending(getCellValueAsString(row.getCell(
+                findCol(colMap, 20, "assetsdeliverypending"))));
+        builder.reasonForAdditionalCharges(getCellValueAsString(row.getCell(
+                findCol(colMap, 21, "reasonforadditionalcharges", "additionalreason"))));
+        builder.date(getCellValueAsString(row.getCell(
+                findCol(colMap, 24, "date"))));
+
+        return builder.build();
     }
 
     /**
@@ -369,6 +486,7 @@ public class ExcelParsingService {
              Workbook workbook = new XSSFWorkbook(inputStream)) {
 
             Sheet sheet = workbook.getSheetAt(0);
+            Map<String, Integer> colMap = buildColumnIndexMap(sheet);
 
             for (int i = 1; i <= sheet.getLastRowNum(); i++) {
                 Row row = sheet.getRow(i);
@@ -377,7 +495,7 @@ public class ExcelParsingService {
                 }
 
                 try {
-                    EmailRecipient recipient = parseRow(row, i);
+                    EmailRecipient recipient = parseRow(row, i, colMap);
                     String email = findEmailInRow(row);
                     recipient.setVendorEmail(email);
 

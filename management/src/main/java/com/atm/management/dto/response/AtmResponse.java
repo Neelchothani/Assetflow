@@ -25,6 +25,8 @@ public class AtmResponse {
     private LocalDate lastMaintenanceDate;
     private String billingStatus;
     private LocalDate pickupDate;
+    private LocalDate deliveryDate;
+    private String amountReceived;
     private String manufacturer;
     private String model;
     private BigDecimal cashCapacity;

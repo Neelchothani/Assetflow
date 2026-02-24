@@ -238,6 +238,20 @@ public class AssetCreationService {
             }
         }
 
+        // Parse delivery date from column AF
+        if (recipient.getDeliveryDate() != null && !recipient.getDeliveryDate().isBlank()) {
+            try {
+                atm.setDeliveryDate(LocalDate.parse(recipient.getDeliveryDate()));
+            } catch (Exception e) {
+                log.warn("Invalid delivery date: {}", recipient.getDeliveryDate());
+            }
+        }
+
+        // Amount received from column AG
+        if (recipient.getAmountReceived() != null && !recipient.getAmountReceived().isBlank()) {
+            atm.setAmountReceived(recipient.getAmountReceived());
+        }
+
         // Populate cost fields from Excel row
         Double totalCost = recipient.getTotalCost(); // Column N
         Double hold = recipient.getHold();           // Column O
@@ -424,6 +438,20 @@ public class AssetCreationService {
             } catch (Exception e) {
                 log.warn("Invalid pickup date: {}", recipient.getPickUpDate());
             }
+        }
+
+        // Update delivery date if provided
+        if (recipient.getDeliveryDate() != null && !recipient.getDeliveryDate().isBlank()) {
+            try {
+                atm.setDeliveryDate(LocalDate.parse(recipient.getDeliveryDate()));
+            } catch (Exception e) {
+                log.warn("Invalid delivery date: {}", recipient.getDeliveryDate());
+            }
+        }
+
+        // Update amount received if provided
+        if (recipient.getAmountReceived() != null && !recipient.getAmountReceived().isBlank()) {
+            atm.setAmountReceived(recipient.getAmountReceived());
         }
 
         // Save updated ATM

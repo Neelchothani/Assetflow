@@ -44,6 +44,7 @@ export default function Assets() {
   const [isLoading, setIsLoading] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [amountReceivedFilter, setAmountReceivedFilter] = useState<string>('all');
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
@@ -71,6 +72,8 @@ export default function Assets() {
     billingMonth: '',
     billingStatus: '',
     pickupDate: '',
+    deliveryDate: '',
+    amountReceived: '',
   });
 
   const [editData, setEditData] = useState<UpdateAssetPayload>({});
@@ -179,6 +182,8 @@ export default function Assets() {
         billingMonth: '',
         billingStatus: '',
         pickupDate: '',
+        deliveryDate: '',
+        amountReceived: '',
       });
       toast({
         title: 'Success',
@@ -240,6 +245,8 @@ export default function Assets() {
         billingMonth: editData.billingMonth !== undefined ? editData.billingMonth : selectedAsset.billingMonth,
         billingStatus: editData.billingStatus !== undefined ? editData.billingStatus : selectedAsset.billingStatus,
         pickupDate: editData.pickupDate !== undefined ? editData.pickupDate : selectedAsset.pickupDate,
+        deliveryDate: editData.deliveryDate !== undefined ? editData.deliveryDate : selectedAsset.deliveryDate,
+        amountReceived: editData.amountReceived !== undefined ? editData.amountReceived : selectedAsset.amountReceived,
       };
 
       const updatedAsset = await atmService.updateAsset(selectedAsset.id, updatePayload);
@@ -297,24 +304,34 @@ export default function Assets() {
   const handleExportAssets = () => {
     try {
       // Prepare data for export
-      const exportData = assets.map((asset) => ({
-        'Asset Name': asset.name,
-        'Serial Number': asset.serialNumber,
-        'Location': asset.location,
-        'Branch': asset.branch || '-',
-        'Vendor': asset.vendor?.name || '-',
-        'Value (₹)': asset.value?.toLocaleString() || '-',
-        'Asset Status': asset.assetStatus || '-',
-        'Billing Month': asset.billingMonth || '-',
-        'Billing Status': asset.billingStatus || '-',
-        'Purchase Date': asset.purchaseDate || '-',
-        'Installation Date': asset.installationDate || '-',
-        'Pickup Date': asset.pickupDate || '-',
-        'Manufacturer': asset.manufacturer || '-',
-        'Model': asset.model || '-',
-        'Cash Capacity (₹)': asset.cashCapacity?.toLocaleString() || '-',
-        'Description': asset.notes || '-',
-      }));
+      const exportData = assets.map((asset) => {
+        const pickupDate = asset.pickupDate ? new Date(asset.pickupDate) : null;
+        const deliveryDate = asset.deliveryDate ? new Date(asset.deliveryDate) : null;
+        const ageingDays = pickupDate
+          ? Math.floor(((deliveryDate ?? new Date()).getTime() - pickupDate.getTime()) / (1000 * 60 * 60 * 24))
+          : null;
+        return {
+          'Asset Name': asset.name,
+          'Serial Number': asset.serialNumber,
+          'Location': asset.location,
+          'Branch': asset.branch || '-',
+          'Vendor': asset.vendor?.name || '-',
+          'Value (₹)': asset.value?.toLocaleString() || '-',
+          'Asset Status': asset.assetStatus || '-',
+          'Billing Month': asset.billingMonth || '-',
+          'Billing Status': asset.billingStatus || '-',
+          'Purchase Date': asset.purchaseDate || '-',
+          'Installation Date': asset.installationDate || '-',
+          'Pickup Date': asset.pickupDate || '-',
+          'Delivery Date': asset.deliveryDate || 'Not Delivered',
+          'Amount Received': asset.amountReceived || '-',
+          'Ageing (Days)': ageingDays !== null ? ageingDays : '-',
+          'Manufacturer': asset.manufacturer || '-',
+          'Model': asset.model || '-',
+          'Cash Capacity (₹)': asset.cashCapacity?.toLocaleString() || '-',
+          'Description': asset.notes || '-',
+        };
+      });
 
       // Create a new workbook
       const worksheet = XLSX.utils.json_to_sheet(exportData);
@@ -335,6 +352,9 @@ export default function Assets() {
         { wch: 15 }, // Purchase Date
         { wch: 15 }, // Installation Date
         { wch: 15 }, // Pickup Date
+        { wch: 15 }, // Delivery Date
+        { wch: 16 }, // Amount Received
+        { wch: 14 }, // Ageing
         { wch: 15 }, // Manufacturer
         { wch: 12 }, // Model
         { wch: 15 }, // Cash Capacity
@@ -368,6 +388,7 @@ export default function Assets() {
   const filteredAssets = assets.filter((asset) => {
     if (categoryFilter !== 'all' && (asset.notes || 'Unknown') !== categoryFilter) return false;
     if (statusFilter !== 'all' && asset.billingStatus !== statusFilter) return false;
+    if (amountReceivedFilter !== 'all' && (asset.amountReceived || '') !== amountReceivedFilter) return false;
     return true;
   });
 
@@ -440,6 +461,17 @@ export default function Assets() {
       ),
     },
     {
+      key: 'deliveryDate',
+      header: 'Delivery Date',
+      render: (asset) => (
+        <div onClick={() => handleOpenDetail(asset)} className="cursor-pointer">
+          {asset.deliveryDate
+            ? new Date(asset.deliveryDate).toLocaleDateString()
+            : <span className="text-amber-600 font-medium">Not Delivered</span>}
+        </div>
+      ),
+    },
+    {
       key: 'billingStatus',
       header: 'Billing Status',
       render: (asset) => (
@@ -447,6 +479,56 @@ export default function Assets() {
           <StatusBadge status={asset.billingStatus as any} />
         </div>
       ),
+    },
+    {
+      key: 'ageing',
+      header: 'Ageing (Days)',
+      render: (asset) => {
+        if (!asset.pickupDate) {
+          return (
+            <div onClick={() => handleOpenDetail(asset)} className="cursor-pointer text-muted-foreground">
+              N/A
+            </div>
+          );
+        }
+        const pickup = new Date(asset.pickupDate);
+        const end = asset.deliveryDate ? new Date(asset.deliveryDate) : new Date();
+        const diffMs = end.getTime() - pickup.getTime();
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        const label = asset.deliveryDate ? `${diffDays} days` : `${diffDays} days (ongoing)`;
+        const colorClass = diffDays > 90
+          ? 'text-red-600 font-semibold'
+          : diffDays > 30
+          ? 'text-amber-600 font-medium'
+          : 'text-green-600 font-medium';
+        return (
+          <div onClick={() => handleOpenDetail(asset)} className={`cursor-pointer ${colorClass}`}>
+            {label}
+          </div>
+        );
+      },
+    },
+    {
+      key: 'amountReceived',
+      header: 'Amount Received',
+      render: (asset) => {
+        const val = asset.amountReceived;
+        const isReceived = val && val.toLowerCase() === 'received';
+        const isNotReceived = val && val.toLowerCase().includes('not');
+        return (
+          <div onClick={() => handleOpenDetail(asset)} className="cursor-pointer">
+            {!val ? (
+              <span className="text-muted-foreground">N/A</span>
+            ) : isReceived ? (
+              <span className="inline-block text-xs font-medium bg-green-100 text-green-700 rounded-full px-2 py-0.5">Received</span>
+            ) : isNotReceived ? (
+              <span className="inline-block text-xs font-medium bg-red-100 text-red-700 rounded-full px-2 py-0.5">Not Received</span>
+            ) : (
+              <span>{val}</span>
+            )}
+          </div>
+        );
+      },
     },
   ];
 
@@ -688,6 +770,36 @@ export default function Assets() {
               </div>
             </div>
 
+            {/* Row 8b: Delivery Date + Amount Received */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="deliveryDate">Delivery Date</Label>
+                <Input
+                  id="deliveryDate"
+                  name="deliveryDate"
+                  type="date"
+                  value={formData.deliveryDate}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="amountReceived">Amount Received</Label>
+                <Select
+                  value={formData.amountReceived || 'none'}
+                  onValueChange={(val) => setFormData((prev) => ({ ...prev, amountReceived: val === 'none' ? '' : val }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Not set</SelectItem>
+                    <SelectItem value="Received">Received</SelectItem>
+                    <SelectItem value="Not received">Not Received</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             {/* Row 9: Description */}
             <div className="space-y-2">
               <Label htmlFor="notes">Asset Description</Label>
@@ -747,13 +859,25 @@ export default function Assets() {
           </SelectContent>
         </Select>
 
-        {(categoryFilter !== 'all' || statusFilter !== 'all') && (
+        <Select value={amountReceivedFilter} onValueChange={setAmountReceivedFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Amount Received" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Payment States</SelectItem>
+            <SelectItem value="Received">Received</SelectItem>
+            <SelectItem value="Not received">Not Received</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {(categoryFilter !== 'all' || statusFilter !== 'all' || amountReceivedFilter !== 'all') && (
           <Button
             variant="ghost"
             size="sm"
             onClick={() => {
               setCategoryFilter('all');
               setStatusFilter('all');
+              setAmountReceivedFilter('all');
             }}
           >
             Clear Filters
@@ -961,6 +1085,54 @@ export default function Assets() {
                     value={editData.pickupDate !== undefined ? editData.pickupDate : selectedAsset.pickupDate || ''}
                     onChange={(e) => handleEditChange('pickupDate', e.target.value)}
                   />
+                </div>
+              </div>
+
+              {/* Row 8b: Delivery Date + Ageing */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Delivery Date</Label>
+                  <Input
+                    type="date"
+                    value={editData.deliveryDate !== undefined ? editData.deliveryDate : selectedAsset.deliveryDate || ''}
+                    onChange={(e) => handleEditChange('deliveryDate', e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Ageing</Label>
+                  <div className="flex items-center h-10 px-3 rounded-md border bg-muted text-sm">
+                    {(() => {
+                      const pickupStr = editData.pickupDate ?? selectedAsset.pickupDate;
+                      const deliveryStr = editData.deliveryDate ?? selectedAsset.deliveryDate;
+                      if (!pickupStr) return <span className="text-muted-foreground">N/A</span>;
+                      const pickup = new Date(pickupStr);
+                      const end = deliveryStr ? new Date(deliveryStr) : new Date();
+                      const days = Math.floor((end.getTime() - pickup.getTime()) / (1000 * 60 * 60 * 24));
+                      return deliveryStr
+                        ? <span className="font-medium">{days} days</span>
+                        : <span className="text-amber-600 font-medium">Not Delivered — {days} days ongoing</span>;
+                    })()}
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 8c: Amount Received */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Amount Received</Label>
+                  <Select
+                    value={editData.amountReceived !== undefined ? (editData.amountReceived || 'none') : (selectedAsset.amountReceived || 'none')}
+                    onValueChange={(val) => handleEditChange('amountReceived', val === 'none' ? '' : val)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Not set</SelectItem>
+                      <SelectItem value="Received">Received</SelectItem>
+                      <SelectItem value="Not received">Not Received</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 

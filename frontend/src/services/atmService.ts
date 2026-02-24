@@ -18,6 +18,8 @@ export interface CreateAssetPayload {
   billingMonth?: string;
   billingStatus?: string;
   pickupDate?: string;
+  deliveryDate?: string;
+  amountReceived?: string;
 }
 
 export type UpdateAssetPayload = Partial<CreateAssetPayload>;

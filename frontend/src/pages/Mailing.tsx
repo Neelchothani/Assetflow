@@ -32,6 +32,7 @@ export default function Mailing() {
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [uploadMode, setUploadMode] = useState<'new' | 'existing'>('new');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -94,18 +95,61 @@ export default function Mailing() {
     }
   };
 
-  const processFile = async (file: File) => {
-    setFile(file);
-    setIsUploading(true);
+  const processFile = async (selectedFile: File) => {
+    if (uploadMode === 'existing') {
+      // Must match an existing uploaded filename exactly
+      const match = uploadedFiles.find(
+        (f) => f.originalFilename === selectedFile.name
+      );
+      if (!match) {
+        toast.error(
+          `No file with the name "${selectedFile.name}" exists. Please upload a file whose name matches an existing upload.`
+        );
+        // Reset the native input so the same file can be re-selected after correction
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
 
+      // Delete the existing file first
+      setFile(selectedFile);
+      setIsUploading(true);
+      try {
+        toast.info(`Replacing "${match.originalFilename}"…`);
+        await mailingService.deleteUploadedFile(match.id);
+        setUploadedFiles((prev) => prev.filter((f) => f.id !== match.id));
+      } catch (err) {
+        console.error('Error deleting existing file:', err);
+        toast.error('Failed to remove the existing file. Upload cancelled.');
+        setFile(null);
+        setIsUploading(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
+
+      // Now upload the replacement
+      try {
+        const response: VendorDataResponse = await mailingService.uploadExcelFile(selectedFile);
+        setUploadedData(response);
+        await loadUploadedFiles();
+        toast.success(`"${selectedFile.name}" replaced successfully.`);
+      } catch (error) {
+        console.error('Error uploading replacement file:', error);
+        toast.error('Failed to upload the replacement file.');
+      } finally {
+        setIsUploading(false);
+      }
+      return;
+    }
+
+    // Normal new-file upload
+    setFile(selectedFile);
+    setIsUploading(true);
     try {
-      const response: VendorDataResponse = await mailingService.uploadExcelFile(file);
+      const response: VendorDataResponse = await mailingService.uploadExcelFile(selectedFile);
       setUploadedData(response);
-      // Reload uploaded files list
       await loadUploadedFiles();
     } catch (error) {
       console.error('Error uploading file:', error);
-      // Handle error appropriately
     } finally {
       setIsUploading(false);
     }
@@ -137,6 +181,11 @@ export default function Mailing() {
     }
   };
 
+  const handleModeSwitch = (mode: 'new' | 'existing') => {
+    setUploadMode(mode);
+    handleReset();
+  };
+
   const vendorCount = uploadedData?.uniqueVendors || 0;
   const warningCount = uploadedData?.warnings?.length || 0;
 
@@ -159,6 +208,36 @@ export default function Mailing() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Mode toggle */}
+          <div className="flex gap-2 mb-5">
+            <Button
+              type="button"
+              variant={uploadMode === 'new' ? 'default' : 'outline'}
+              className="flex-1 sm:flex-none"
+              onClick={() => handleModeSwitch('new')}
+            >
+              New File
+            </Button>
+            <Button
+              type="button"
+              variant={uploadMode === 'existing' ? 'default' : 'outline'}
+              className="flex-1 sm:flex-none"
+              onClick={() => handleModeSwitch('existing')}
+            >
+              Existing File
+            </Button>
+          </div>
+
+          {uploadMode === 'existing' && !file && (
+            <div className="flex items-start gap-2 mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-800">
+              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+              <span>
+                Upload a file whose <strong>name exactly matches</strong> an existing uploaded file.
+                The old file and all its data will be deleted and replaced with the new one.
+              </span>
+            </div>
+          )}
+
           {!file ? (
             <div
               className={cn(

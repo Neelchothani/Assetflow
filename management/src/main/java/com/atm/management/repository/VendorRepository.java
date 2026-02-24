@@ -21,7 +21,11 @@ public interface VendorRepository extends JpaRepository<Vendor, Long> {
     @Query("SELECT COUNT(v) FROM Vendor v WHERE v.status = 'ACTIVE'")
     Long countActiveVendors();
 
-    @Modifying
-    @Query("DELETE FROM Vendor v WHERE v.uploadedFile.id = ?1")
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM Vendor v WHERE v.uploadedFile.id = ?1 AND v.id NOT IN (SELECT DISTINCT a.vendor.id FROM Atm a WHERE a.vendor IS NOT NULL)")
     int deleteByUploadedFileId(Long uploadedFileId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Vendor v SET v.uploadedFile = null WHERE v.uploadedFile.id = ?1")
+    int clearUploadedFileReference(Long uploadedFileId);
 }

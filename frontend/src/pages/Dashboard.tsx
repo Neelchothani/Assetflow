@@ -7,6 +7,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { dashboardService } from '@/services/dashboardService';
 import { costingService } from '@/services/costingService';
 import { movementService } from '@/services/movementService';
+import { atmService } from '@/services/atmService';
 import {
   Package,
   Activity,
@@ -14,8 +15,12 @@ import {
   ArrowLeftRight,
   DollarSign,
   X,
+  Clock,
+  Search,
+  Banknote,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -99,6 +104,14 @@ export default function Dashboard() {
   const [totalMovements, setTotalMovements] = useState(0);
   const [showPLModal, setShowPLModal] = useState(false);
   const [viewMode, setViewMode] = useState<'year' | 'month'>('year');
+  const [atms, setAtms] = useState<any[]>([]);
+  const [showAssetModal, setShowAssetModal] = useState(false);
+  const [showVendorModal, setShowVendorModal] = useState(false);
+  const [assetSearch, setAssetSearch] = useState('');
+  const [vendorSearch, setVendorSearch] = useState('');
+  const [showAmountModal, setShowAmountModal] = useState(false);
+  const [amountTab, setAmountTab] = useState<'received' | 'not-received'>('received');
+  const [amountSearch, setAmountSearch] = useState('');
 
   useEffect(() => {
     dashboardService.getKPIs().then((res) => setKpis(res)).catch(() => setKpis({}));
@@ -130,6 +143,112 @@ export default function Dashboard() {
     };
     fetchMovements();
   }, []);
+
+  useEffect(() => {
+    atmService.getAssets().then(setAtms).catch((e) => console.error(e));
+  }, []);
+
+  const computeAgeing = (pickupDate?: string, deliveryDate?: string): number | null => {
+    if (!pickupDate) return null;
+    const start = new Date(pickupDate);
+    if (isNaN(start.getTime())) return null;
+    const end = deliveryDate ? new Date(deliveryDate) : new Date();
+    if (isNaN(end.getTime())) return null;
+    return Math.max(0, Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+  };
+
+  const assetAgeingList = useMemo(() => {
+    return atms
+      .map((atm) => ({
+        id: atm.id,
+        name: atm.name,
+        serialNumber: atm.serialNumber,
+        pickupDate: atm.pickupDate,
+        deliveryDate: atm.deliveryDate,
+        ageing: computeAgeing(atm.pickupDate, atm.deliveryDate),
+      }))
+      .filter((a) => a.ageing !== null)
+      .sort((a, b) => b.ageing! - a.ageing!);
+  }, [atms]);
+
+  const avgAssetAgeing = useMemo(() => {
+    if (assetAgeingList.length === 0) return null;
+    const sum = assetAgeingList.reduce((s, a) => s + a.ageing!, 0);
+    return Math.round(sum / assetAgeingList.length);
+  }, [assetAgeingList]);
+
+  const vendorAgeingList = useMemo(() => {
+    const map: { [vendorName: string]: number[] } = {};
+    atms.forEach((atm) => {
+      const ageing = computeAgeing(atm.pickupDate, atm.deliveryDate);
+      if (ageing === null) return;
+      const vendorName = atm.vendor?.name || 'Unknown';
+      if (!map[vendorName]) map[vendorName] = [];
+      map[vendorName].push(ageing);
+    });
+    return Object.entries(map)
+      .map(([name, days]) => ({
+        name,
+        avgAgeing: Math.round(days.reduce((s, d) => s + d, 0) / days.length),
+        assetCount: days.length,
+      }))
+      .sort((a, b) => b.avgAgeing - a.avgAgeing);
+  }, [atms]);
+
+  const avgVendorAgeing = useMemo(() => {
+    if (vendorAgeingList.length === 0) return null;
+    const sum = vendorAgeingList.reduce((s, v) => s + v.avgAgeing, 0);
+    return Math.round(sum / vendorAgeingList.length);
+  }, [vendorAgeingList]);
+
+  const filteredAssets = useMemo(() => {
+    if (!assetSearch.trim()) return assetAgeingList;
+    const q = assetSearch.trim().toLowerCase();
+    return assetAgeingList.filter(
+      (a) =>
+        String(a.id).includes(q) ||
+        (a.name && a.name.toLowerCase().includes(q)) ||
+        (a.serialNumber && a.serialNumber.toLowerCase().includes(q))
+    );
+  }, [assetAgeingList, assetSearch]);
+
+  const filteredVendors = useMemo(() => {
+    if (!vendorSearch.trim()) return vendorAgeingList;
+    const q = vendorSearch.trim().toLowerCase();
+    return vendorAgeingList.filter((v) => v.name.toLowerCase().includes(q));
+  }, [vendorAgeingList, vendorSearch]);
+
+  // Amount received lists
+  // "Received" bucket: amountReceived is null / empty / "Received" (all count toward the total)
+  const isNotReceived = (atm: any) =>
+    atm.amountReceived && atm.amountReceived.toLowerCase().includes('not');
+
+  const receivedAtms = useMemo(
+    () => atms.filter((atm) => !isNotReceived(atm)),
+    [atms]
+  );
+
+  const notReceivedAtms = useMemo(
+    () => atms.filter((atm) => isNotReceived(atm)),
+    [atms]
+  );
+
+  const totalReceivedValue = useMemo(
+    () => receivedAtms.reduce((s, atm) => s + (Number(atm.value) || 0), 0),
+    [receivedAtms]
+  );
+
+  const filteredAmountList = useMemo(() => {
+    const list = amountTab === 'received' ? receivedAtms : notReceivedAtms;
+    if (!amountSearch.trim()) return list;
+    const q = amountSearch.trim().toLowerCase();
+    return list.filter(
+      (atm) =>
+        String(atm.id).includes(q) ||
+        (atm.name && atm.name.toLowerCase().includes(q)) ||
+        (atm.serialNumber && atm.serialNumber.toLowerCase().includes(q))
+    );
+  }, [amountTab, receivedAtms, notReceivedAtms, amountSearch]);
 
   // Year-wise summary
   const yearWiseSummary = useMemo(() => {
@@ -233,6 +352,28 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
+      {/* Amount Received Card */}
+      <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setShowAmountModal(true)}>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Banknote className="h-5 w-5 text-green-600" />
+            <CardTitle className="text-3xl">Amount Received</CardTitle>
+          </div>
+          <CardDescription>
+            Total value of assets with payment received or pending confirmation — click to view breakdown
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-4xl font-bold text-green-600">
+            ₹{totalReceivedValue.toLocaleString()}
+          </div>
+          <p className="text-sm text-muted-foreground mt-1">
+            {receivedAtms.length} asset{receivedAtms.length !== 1 ? 's' : ''} ·{' '}
+            <span className="text-red-500">{notReceivedAtms.length} not received</span>
+          </p>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
         <KPICard
           title="Total Base Costings"
@@ -247,6 +388,277 @@ export default function Dashboard() {
           iconColor="bg-accent/10 text-accent"
         />
       </div>
+
+      {/* Ageing Analysis Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+        {/* Card 1: Average Asset Ageing */}
+        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setShowAssetModal(true)}>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-primary" />
+              <CardTitle className="text-lg">Avg. Asset Ageing</CardTitle>
+            </div>
+            <CardDescription>Days from pickup to delivery (or today) — click to view details</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-4xl font-bold">
+              {avgAssetAgeing !== null ? `${avgAssetAgeing} days` : 'N/A'}
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              {assetAgeingList.length} asset{assetAgeingList.length !== 1 ? 's' : ''} with pickup data
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Card 2: Average Vendor Ageing */}
+        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setShowVendorModal(true)}>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-primary" />
+              <CardTitle className="text-lg">Avg. Ageing by Vendor</CardTitle>
+            </div>
+            <CardDescription>Average asset ageing grouped by vendor — click to view details</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-4xl font-bold">
+              {avgVendorAgeing !== null ? `${avgVendorAgeing} days` : 'N/A'}
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              {vendorAgeingList.length} vendor{vendorAgeingList.length !== 1 ? 's' : ''} with pickup data
+            </p>
+          </CardContent>
+        </Card>
+
+      </div>
+
+      {/* Amount Received Modal */}
+      <Dialog open={showAmountModal} onOpenChange={(open) => { setShowAmountModal(open); if (!open) { setAmountSearch(''); setAmountTab('received'); } }}>
+        <DialogContent className="max-w-4xl h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Amount Received Breakdown</DialogTitle>
+            <DialogDescription>
+              {amountTab === 'received'
+                ? `${receivedAtms.length} assets — includes confirmed received and unset entries (all count toward total)`
+                : `${notReceivedAtms.length} assets with payment not yet received (excluded from total)`}
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Tab buttons */}
+          <div className="flex gap-3 mb-2">
+            <Button
+              variant={amountTab === 'received' ? 'default' : 'outline'}
+              onClick={() => { setAmountTab('received'); setAmountSearch(''); }}
+            >
+              Received ({receivedAtms.length})
+            </Button>
+            <Button
+              variant={amountTab === 'not-received' ? 'default' : 'outline'}
+              onClick={() => { setAmountTab('not-received'); setAmountSearch(''); }}
+            >
+              Not Received ({notReceivedAtms.length})
+            </Button>
+          </div>
+
+          {/* Search */}
+          <div className="relative mb-2">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by ATM ID, name or serial number…"
+              className="pl-9"
+              value={amountSearch}
+              onChange={(e) => setAmountSearch(e.target.value)}
+            />
+          </div>
+
+          {/* Summary strip */}
+          {amountTab === 'received' && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-green-50 border border-green-200 text-sm mb-2">
+              <Banknote className="h-4 w-4 text-green-600 shrink-0" />
+              <span className="text-green-800 font-medium">
+                Total: ₹{totalReceivedValue.toLocaleString()}
+              </span>
+              <span className="text-green-600 ml-auto">{receivedAtms.length} assets</span>
+            </div>
+          )}
+
+          <div className="overflow-y-auto flex-1">
+            {filteredAmountList.length === 0 ? (
+              <p className="text-center text-muted-foreground py-12">No assets found</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-background border-b z-10">
+                  <tr>
+                    <th className="text-left py-3 px-4 font-semibold">ID</th>
+                    <th className="text-left py-3 px-4 font-semibold">ATM / Serial</th>
+                    <th className="text-left py-3 px-4 font-semibold">Vendor</th>
+                    <th className="text-right py-3 px-4 font-semibold">Value (₹)</th>
+                    <th className="text-right py-3 px-4 font-semibold">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredAmountList.map((atm: any) => {
+                    const ar = atm.amountReceived;
+                    const isRec = ar && ar.toLowerCase() === 'received';
+                    const isNotRec = ar && ar.toLowerCase().includes('not');
+                    const badge = isRec
+                      ? <span className="inline-block text-xs bg-green-100 text-green-700 rounded-full px-2 py-0.5">Received</span>
+                      : isNotRec
+                      ? <span className="inline-block text-xs bg-red-100 text-red-700 rounded-full px-2 py-0.5">Not Received</span>
+                      : <span className="inline-block text-xs bg-muted text-muted-foreground rounded-full px-2 py-0.5">N/A</span>;
+                    return (
+                      <tr key={atm.id} className="border-b hover:bg-muted/50 transition-colors">
+                        <td className="py-3 px-4 text-muted-foreground">{atm.id}</td>
+                        <td className="py-3 px-4">
+                          <div className="font-medium">{atm.name || '—'}</div>
+                          <div className="text-xs text-muted-foreground">{atm.serialNumber || ''}</div>
+                        </td>
+                        <td className="py-3 px-4 text-muted-foreground">{atm.vendor?.name || '—'}</td>
+                        <td className="py-3 px-4 text-right font-medium">
+                          {atm.value != null ? `₹${Number(atm.value).toLocaleString()}` : '—'}
+                        </td>
+                        <td className="py-3 px-4 text-right">{badge}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Asset Ageing Modal */}
+      <Dialog open={showAssetModal} onOpenChange={(open) => { setShowAssetModal(open); if (!open) setAssetSearch(''); }}>
+        <DialogContent className="max-w-4xl h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Asset Ageing Details</DialogTitle>
+            <DialogDescription>
+              All assets with pickup data, sorted by ageing (highest first)
+            </DialogDescription>
+          </DialogHeader>
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by ATM ID, name or serial number…"
+              className="pl-9"
+              value={assetSearch}
+              onChange={(e) => setAssetSearch(e.target.value)}
+            />
+          </div>
+          <div className="overflow-y-auto flex-1">
+            {filteredAssets.length === 0 ? (
+              <p className="text-center text-muted-foreground py-12">No assets found</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-background border-b z-10">
+                  <tr>
+                    <th className="text-left py-3 px-4 font-semibold">ID</th>
+                    <th className="text-left py-3 px-4 font-semibold">ATM / Serial</th>
+                    <th className="text-left py-3 px-4 font-semibold">Pickup Date</th>
+                    <th className="text-right py-3 px-4 font-semibold">Ageing</th>
+                    <th className="text-right py-3 px-4 font-semibold">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredAssets.map((a) => {
+                    const isOngoing = !a.deliveryDate;
+                    const ageClass =
+                      a.ageing! > 90
+                        ? 'text-red-500 font-semibold'
+                        : a.ageing! > 30
+                        ? 'text-amber-500 font-semibold'
+                        : 'text-green-600 font-semibold';
+                    return (
+                      <tr key={a.id} className="border-b hover:bg-muted/50 transition-colors">
+                        <td className="py-3 px-4 text-muted-foreground">{a.id}</td>
+                        <td className="py-3 px-4">
+                          <div className="font-medium">{a.name || '—'}</div>
+                          <div className="text-xs text-muted-foreground">{a.serialNumber || ''}</div>
+                        </td>
+                        <td className="py-3 px-4 text-muted-foreground">{a.pickupDate || '—'}</td>
+                        <td className={`py-3 px-4 text-right ${ageClass}`}>{a.ageing} days</td>
+                        <td className="py-3 px-4 text-right">
+                          {isOngoing ? (
+                            <span className="inline-block text-xs bg-amber-100 text-amber-700 rounded-full px-2 py-0.5">Ongoing</span>
+                          ) : (
+                            <span className="inline-block text-xs bg-green-100 text-green-700 rounded-full px-2 py-0.5">Delivered</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Vendor Ageing Modal */}
+      <Dialog open={showVendorModal} onOpenChange={(open) => { setShowVendorModal(open); if (!open) setVendorSearch(''); }}>
+        <DialogContent className="max-w-3xl h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Vendor Ageing Details</DialogTitle>
+            <DialogDescription>
+              Average asset ageing per vendor, sorted highest first
+            </DialogDescription>
+          </DialogHeader>
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search vendor by name…"
+              className="pl-9"
+              value={vendorSearch}
+              onChange={(e) => setVendorSearch(e.target.value)}
+            />
+          </div>
+          <div className="overflow-y-auto flex-1">
+            {filteredVendors.length === 0 ? (
+              <p className="text-center text-muted-foreground py-12">No vendors found</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-background border-b z-10">
+                  <tr>
+                    <th className="text-left py-3 px-4 font-semibold">#</th>
+                    <th className="text-left py-3 px-4 font-semibold">Vendor Name</th>
+                    <th className="text-center py-3 px-4 font-semibold">Assets</th>
+                    <th className="text-right py-3 px-4 font-semibold">Avg. Ageing</th>
+                    <th className="text-right py-3 px-4 font-semibold">Band</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredVendors.map((v, idx) => {
+                    const ageClass =
+                      v.avgAgeing > 90
+                        ? 'text-red-500 font-semibold'
+                        : v.avgAgeing > 30
+                        ? 'text-amber-500 font-semibold'
+                        : 'text-green-600 font-semibold';
+                    const band =
+                      v.avgAgeing > 90
+                        ? { label: '> 90 days', cls: 'bg-red-100 text-red-700' }
+                        : v.avgAgeing > 30
+                        ? { label: '31–90 days', cls: 'bg-amber-100 text-amber-700' }
+                        : { label: '≤ 30 days', cls: 'bg-green-100 text-green-700' };
+                    return (
+                      <tr key={v.name} className="border-b hover:bg-muted/50 transition-colors">
+                        <td className="py-3 px-4 text-muted-foreground">{idx + 1}</td>
+                        <td className="py-3 px-4 font-medium">{v.name}</td>
+                        <td className="py-3 px-4 text-center text-muted-foreground">{v.assetCount}</td>
+                        <td className={`py-3 px-4 text-right ${ageClass}`}>{v.avgAgeing} days</td>
+                        <td className="py-3 px-4 text-right">
+                          <span className={`inline-block text-xs rounded-full px-2 py-0.5 ${band.cls}`}>{band.label}</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

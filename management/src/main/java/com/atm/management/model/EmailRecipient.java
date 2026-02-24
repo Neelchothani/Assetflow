@@ -40,6 +40,8 @@ public class EmailRecipient {
     private String invoiceNo;
     private String billingMonth;
     private String billing;
+    private String deliveryDate;
+    private String amountReceived;
 
     // Additional field for email (if vendor email is stored elsewhere)
     private String vendorEmail;

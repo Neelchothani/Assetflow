@@ -33,6 +33,8 @@ export interface Atm {
   billingMonth?: string;
   billingStatus?: string;
   pickupDate?: string;
+  deliveryDate?: string;
+  amountReceived?: string;
   cashCapacity?: number;
   notes?: string;
 }

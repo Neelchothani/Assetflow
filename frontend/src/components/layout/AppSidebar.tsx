@@ -8,6 +8,7 @@ import {
   Mail,
   Users,
   DollarSign,
+  Bell,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -22,6 +23,7 @@ const navigationItems = [
   { name: 'Mailing', href: '/mailing', icon: Mail },
   { name: 'Vendors', href: '/vendors', icon: Users },
   { name: 'Costing', href: '/costing', icon: DollarSign },
+  { name: 'Notices', href: '/notices', icon: Bell },
 ];
 
 const bottomItems = [

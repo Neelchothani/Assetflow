@@ -36,4 +36,6 @@ public class AtmRequest {
     private String billingMonth;
     private String billingStatus;
     private LocalDate pickupDate;
+    private LocalDate deliveryDate;
+    private String amountReceived;
 }

@@ -1,3 +1,9 @@
-admin & user accessibility
-fix signup page
-signin page login without options
+make another page called notices
+change format of excel parser that includes delivery date
+calculate ageing per asset
+send notice to raise invoice when ageing is completed
+display average ageing on dashboard and average aging per vendor on vendor page
+track amount received or not by changing format of excel file and parser
+show difference in dashboard of amount pending to be received 
+
+--end--
