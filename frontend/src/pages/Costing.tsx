@@ -185,7 +185,7 @@ export default function Costing() {
 
 	const handleExportCostings = () => {
 		try {
-			const exportData = items.map((it) => ({
+			const exportData = filteredItems.map((it) => ({
 				Asset: it.atm?.name || '-',
 				Vendor: it.vendor?.name || '-',
 				Month: it.billingMonth || '-',

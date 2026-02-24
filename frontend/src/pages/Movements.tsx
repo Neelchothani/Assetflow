@@ -96,7 +96,7 @@ export default function Movements() {
 
   const handleExportMovements = () => {
     try {
-      const exportData = movements.map((m) => ({
+      const exportData = filteredMovements.map((m) => ({
         'Asset Name': m.assetName || m.atm?.name || '-',
         'Serial Number': m.atm?.serialNumber || '-',
         'From Location': m.fromLocation || '-',

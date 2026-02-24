@@ -305,8 +305,8 @@ export default function Assets() {
 
   const handleExportAssets = () => {
     try {
-      // Prepare data for export
-      const exportData = assets.map((asset) => {
+      // Prepare data for export — uses filteredAssets so active filters are respected
+      const exportData = filteredAssets.map((asset) => {
         const pickupDate = asset.pickupDate ? new Date(asset.pickupDate) : null;
         const deliveryDate = asset.deliveryDate ? new Date(asset.deliveryDate) : null;
         const ageingDays = pickupDate
@@ -373,7 +373,7 @@ export default function Assets() {
 
       toast({
         title: 'Success',
-        description: `Exported ${assets.length} assets to ${filename}`,
+        description: `Exported ${filteredAssets.length} assets to ${filename}`,
       });
     } catch (error) {
       console.error('Failed to export assets:', error);
