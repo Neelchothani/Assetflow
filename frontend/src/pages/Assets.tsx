@@ -45,6 +45,8 @@ export default function Assets() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [amountReceivedFilter, setAmountReceivedFilter] = useState<string>('all');
+  const [vendorFilter, setVendorFilter] = useState<string>('all');
+  const [ageingFilter, setAgeingFilter] = useState<string>('all');
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
@@ -384,11 +386,26 @@ export default function Assets() {
   };
 
   const categories = [...new Set(assets.map((a) => a.notes || 'Unknown').filter(Boolean))];
+  const vendorNames = [...new Set(assets.map((a) => a.vendor?.name).filter(Boolean))] as string[];
+
+  const getAgeingDays = (asset: Asset): number | null => {
+    if (!asset.pickupDate) return null;
+    const pickup = new Date(asset.pickupDate);
+    const end = asset.deliveryDate ? new Date(asset.deliveryDate) : new Date();
+    return Math.floor((end.getTime() - pickup.getTime()) / (1000 * 60 * 60 * 24));
+  };
 
   const filteredAssets = assets.filter((asset) => {
     if (categoryFilter !== 'all' && (asset.notes || 'Unknown') !== categoryFilter) return false;
     if (statusFilter !== 'all' && asset.billingStatus !== statusFilter) return false;
     if (amountReceivedFilter !== 'all' && (asset.amountReceived || '') !== amountReceivedFilter) return false;
+    if (vendorFilter !== 'all' && (asset.vendor?.name || '') !== vendorFilter) return false;
+    if (ageingFilter !== 'all') {
+      const days = getAgeingDays(asset);
+      if (days === null) return false;
+      if (ageingFilter === 'gt90' && days <= 90) return false;
+      if (ageingFilter === 'lt90' && days > 90) return false;
+    }
     return true;
   });
 
@@ -421,6 +438,17 @@ export default function Assets() {
       render: (asset) => (
         <div onClick={() => handleOpenDetail(asset)} className="cursor-pointer">
           <Badge variant="outline">{asset.assetStatus || 'N/A'}</Badge>
+        </div>
+      ),
+    },
+    {
+      key: 'vendor',
+      header: 'Vendor',
+      render: (asset) => (
+        <div onClick={() => handleOpenDetail(asset)} className="cursor-pointer">
+          {asset.vendor?.name
+            ? <span className="font-medium">{asset.vendor.name}</span>
+            : <span className="text-muted-foreground">Unassigned</span>}
         </div>
       ),
     },
@@ -870,7 +898,30 @@ export default function Assets() {
           </SelectContent>
         </Select>
 
-        {(categoryFilter !== 'all' || statusFilter !== 'all' || amountReceivedFilter !== 'all') && (
+        <Select value={vendorFilter} onValueChange={setVendorFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Vendor" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Vendors</SelectItem>
+            {vendorNames.map((name) => (
+              <SelectItem key={name} value={name}>{name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={ageingFilter} onValueChange={setAgeingFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Ageing" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Ageing</SelectItem>
+            <SelectItem value="gt90">More than 90 days</SelectItem>
+            <SelectItem value="lt90">Less than 90 days</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {(categoryFilter !== 'all' || statusFilter !== 'all' || amountReceivedFilter !== 'all' || vendorFilter !== 'all' || ageingFilter !== 'all') && (
           <Button
             variant="ghost"
             size="sm"
@@ -878,6 +929,8 @@ export default function Assets() {
               setCategoryFilter('all');
               setStatusFilter('all');
               setAmountReceivedFilter('all');
+              setVendorFilter('all');
+              setAgeingFilter('all');
             }}
           >
             Clear Filters
